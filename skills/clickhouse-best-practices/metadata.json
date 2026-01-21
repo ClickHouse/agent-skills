@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "January 2026",
+  "clickhouseVersion": "24.1+",
+  "abstract": "Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization.",
+  "references": [
+    "https://clickhouse.com/docs",
+    "https://github.com/ClickHouse/ClickHouse"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "clickhouse-best-practices-build",
+  "version": "0.1.0",
+  "description": "Build tooling for ClickHouse Best Practices skill",
+  "type": "module",
+  "scripts": {
+    "build": "bun run build-agents",
+    "build-agents": "bun src/build.ts",
+    "validate": "bun src/validate.ts",
+    "validate-sql": "bun src/validate-sql.ts",
+    "check-links": "bun src/check-links.ts",
+    "dev": "bun run build && bun run validate"
+  },
+  "keywords": [
+    "clickhouse",
+    "performance",
+    "guidelines",
+    "llm",
+    "agents"
+  ],
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

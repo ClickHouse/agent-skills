@@ -1,0 +1,46 @@
+name: ClickHouse Best Practices CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'skills/clickhouse-best-practices/**'
+      - 'packages/clickhouse-best-practices-build/**'
+  pull_request:
+    paths:
+      - 'skills/clickhouse-best-practices/**'
+      - 'packages/clickhouse-best-practices-build/**'
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/clickhouse-best-practices-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Validate rule structure
+        run: bun run validate
+
+      - name: Validate SQL syntax
+        run: bun run validate-sql
+
+      - name: Check internal links
+        run: bun run check-links
+
+      - name: Build documentation
+        run: bun run build
+
+      - name: Upload AGENTS.md artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agents-md
+          path: skills/clickhouse-best-practices/AGENTS.md

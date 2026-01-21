@@ -1,0 +1,25 @@
+.DS_Store
+node_modules/
+*.log
+dist/
+build/
+.env
+.env.*
+!.env.example
+bun.lockb
+
+# Build artifacts
+packages/*/bin/
+packages/*/dist/
+packages/*/build/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
