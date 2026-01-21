@@ -103,7 +103,7 @@ async function validateSQL(sql: string): Promise<string | null> {
     )
 
     // ClickHouse returns errors in stderr
-    if (stderr && stderr.includes('Exception') || stderr.includes('Error')) {
+    if (stderr && (stderr.includes('Exception') || stderr.includes('Error'))) {
       return stderr.trim()
     }
 
