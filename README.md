@@ -1,7 +1,4 @@
-# Agent Skills for ClickHouse
-
-A collection of ClickHouse best practices and optimization guidelines for AI coding agents.
-They follow the specification described in [agentskills.io](https://agentskills.io/home).
+# ClickHouse Agent Skills
 
 ## Installation
 
@@ -9,44 +6,60 @@ They follow the specification described in [agentskills.io](https://agentskills.
 npx add-skill clickhouse/agent-skills
 ```
 
+This adds the skills to your project's `.cursor/skills/` directory (or equivalent for your agent).
+
+## What is this?
+
+Agent Skills are packaged instructions that extend AI coding agents (Claude Code, Cursor, Copilot, etc.) with domain-specific expertise. This repository provides skills for ClickHouse databases—covering schema design, query optimization, and data ingestion patterns.
+
+When an agent loads these skills, it gains knowledge of ClickHouse best practices and can apply them while helping you design tables, write queries, or troubleshoot performance issues.
+
+Skills follow the open specification at [agentskills.io](https://agentskills.io).
+
 ## Available Skills
 
 ### ClickHouse Best Practices
 
-Comprehensive optimization guide for ClickHouse databases covering:
-- Schema design patterns
-- Query optimization techniques
-- Table engine selection
-- Indexing strategies
-- Materialized views
-- Distributed operations
-- Operational best practices
+**28 rules** covering schema design, query optimization, and data ingestion—prioritized by impact.
 
-**Location:** `skills/clickhouse-best-practices/`
+| Category | Rules | Impact |
+|----------|-------|--------|
+| Primary Key Selection | 4 | CRITICAL |
+| Data Type Selection | 5 | CRITICAL |
+| JOIN Optimization | 5 | CRITICAL |
+| Insert Batching | 1 | CRITICAL |
+| Mutation Avoidance | 2 | CRITICAL |
+| Partitioning Strategy | 4 | HIGH |
+| Skipping Indices | 1 | HIGH |
+| Materialized Views | 2 | HIGH |
+| Async Inserts | 2 | HIGH |
+| OPTIMIZE Avoidance | 1 | HIGH |
+| JSON Usage | 1 | MEDIUM |
 
-**For humans:** Read [SKILL.md](skills/clickhouse-best-practices/SKILL.md) for an overview, or [AGENTS.md](skills/clickhouse-best-practices/AGENTS.md) for the complete compiled guide.
+**Location:** [`skills/clickhouse-best-practices/`](./skills/clickhouse-best-practices/)
 
-**For agents:** Reference the skill when designing schemas, writing queries, or optimizing ClickHouse databases.
+**For humans:** Read [SKILL.md](./skills/clickhouse-best-practices/SKILL.md) for an overview, or [AGENTS.md](./skills/clickhouse-best-practices/AGENTS.md) for the complete compiled guide.
 
-```bash
-cd packages/clickhouse-best-practices-build
+**For agents:** The skill activates automatically when you work with ClickHouse—creating tables, writing queries, or designing data pipelines.
 
-# Install dependencies
-bun install
+## Quick Start
 
-# Validate rule structure
-bun run validate
+After installation, your AI agent will reference these best practices when:
 
-# Validate SQL syntax
-bun run validate-sql
+- Creating new tables with `CREATE TABLE`
+- Choosing `ORDER BY` / `PRIMARY KEY` columns
+- Selecting data types for columns
+- Optimizing slow queries
+- Writing or tuning JOINs
+- Designing data ingestion pipelines
+- Handling updates or deletes
 
-# Check internal links
-bun run check-links
+Example prompt:
+> "Create a table for storing user events with fields for user_id, event_type, properties (JSON), and timestamp"
 
-# Build AGENTS.md
-bun run build
-```
+The agent will apply relevant rules like proper column ordering in the primary key, appropriate data types, and partitioning strategy.
+
 
 ## License
 
-Apache 2.0
+Apache 2.0 — see [LICENSE](./LICENSE) for details.
