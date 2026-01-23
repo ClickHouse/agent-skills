@@ -9,6 +9,7 @@
     "validate": "bun src/validate.ts",
     "validate-sql": "bun src/validate-sql.ts",
     "check-links": "bun src/check-links.ts",
+    "check-external-links": "bun src/check-external-links.ts",
     "dev": "bun run build && bun run validate"
   },
   "keywords": [
