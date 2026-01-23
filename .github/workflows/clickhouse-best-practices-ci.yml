@@ -44,3 +44,23 @@ jobs:
         with:
           name: agents-md
           path: skills/clickhouse-best-practices/AGENTS.md
+
+      - name: Send Slack notification
+        if: github.ref == 'refs/heads/main' && success()
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
+        with:
+          webhook: ${{ secrets.RELEASE_SLACK_WEBHOOK }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "akgent-skills: ClickHouse Best Practices CI completed successfully",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "agent-skills: ClickHouse Best Practices validated and built successfully\n*Branch:* ${{ github.ref_name }}\n*Commit:* <${{ github.event.head_commit.url }}|${{ github.event.head_commit.message }}>"
+                  }
+                }
+              ]
+            }
