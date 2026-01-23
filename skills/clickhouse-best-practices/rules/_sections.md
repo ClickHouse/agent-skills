@@ -1,49 +1,24 @@
 # Sections
 
+This file defines all sections, their ordering, impact levels, and descriptions.
+The section ID (in parentheses) is the filename prefix used to group rules.
+
+---
+
 ## 1. Schema Design (schema)
 
 **Impact:** CRITICAL
 
-**Description:** Proper schema design is foundational to ClickHouse performance. Column types, ordering, and nullable choices can impact query speed by orders of magnitude.
+**Description:** Proper schema design is foundational to ClickHouse performance. ORDER BY is immutable after table creation; wrong choices require full data migration. Includes primary key selection, data types, partitioning strategy, and JSON usage. Column types and ordering can impact query speed by orders of magnitude.
 
 ## 2. Query Optimization (query)
 
 **Impact:** CRITICAL
 
-**Description:** Query patterns dramatically affect performance. PREWHERE, join order, and aggregation strategies can reduce query time from minutes to milliseconds.
+**Description:** Query patterns dramatically affect performance. JOIN algorithms, filtering strategies, skipping indices, and materialized views can reduce query time from minutes to milliseconds. Pre-computed aggregations read thousands of rows instead of billions.
 
-## 3. Table Engines (table)
+## 3. Insert Strategy (insert)
 
-**Impact:** HIGH
+**Impact:** CRITICAL
 
-**Description:** Choosing the right table engine family determines data guarantees, deduplication behavior, and query performance characteristics.
-
-## 4. Indexing Strategies (index)
-
-**Impact:** HIGH
-
-**Description:** Primary keys and secondary indexes (skip indexes, bloom filters) enable efficient data pruning and can reduce scanned data by 100×.
-
-## 5. Materialized Views (materialized)
-
-**Impact:** MEDIUM-HIGH
-
-**Description:** Materialized views enable real-time aggregations and pre-computed queries, trading storage for query speed.
-
-## 6. Distributed Operations (cluster)
-
-**Impact:** MEDIUM
-
-**Description:** Sharding and replication patterns affect data distribution, query parallelism, and fault tolerance.
-
-## 7. Operations & Monitoring (ops)
-
-**Impact:** MEDIUM
-
-**Description:** Operational practices for monitoring, backups, mutations, and system table queries ensure database health.
-
-## 8. Performance Tuning (performance)
-
-**Impact:** LOW-MEDIUM
-
-**Description:** Settings, compression codecs, memory limits, and buffer tuning for specific workloads.
+**Description:** Each INSERT creates a data part. Single-row inserts overwhelm the merge process. Proper batching (10K-100K rows), async inserts for high-frequency writes, mutation avoidance, and letting background merges work are essential for stable cluster performance.

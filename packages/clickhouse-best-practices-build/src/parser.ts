@@ -205,12 +205,13 @@ export async function parseRuleFile(filePath: string): Promise<RuleFile> {
   const sectionMap: Record<string, number> = {
     schema: 1,
     query: 2,
-    table: 3,
-    index: 4,
-    materialized: 5,
-    cluster: 6,
-    ops: 7,
-    performance: 8,
+    insert: 3,
+    table: 4,
+    index: 5,
+    materialized: 6,
+    cluster: 7,
+    ops: 8,
+    performance: 9,
   }
 
   // Extract area from filename (first part before first dash)

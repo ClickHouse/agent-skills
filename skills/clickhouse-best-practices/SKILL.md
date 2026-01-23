@@ -1,90 +1,122 @@
 ---
 name: clickhouse-best-practices
-description: ClickHouse database optimization and best practices guide. This skill should be used when designing schemas, writing queries, configuring tables, or optimizing ClickHouse databases. Triggers on tasks involving ClickHouse schema design, query optimization, table engines, indexing, materialized views, or performance improvements.
+description: ClickHouse database best practices covering schema design, query optimization, and data ingestion. Use when creating tables, writing queries, designing data pipelines, or troubleshooting ClickHouse performance issues.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # ClickHouse Best Practices
 
-Comprehensive optimization guide for ClickHouse databases. Contains rules across 8 categories, prioritized by impact to guide database design, query optimization, and operational practices.
+Comprehensive guidance for ClickHouse covering schema design, query optimization, and data ingestion. Contains 28 rules across 3 main categories (schema, query, insert), prioritized by impact.
+
+> **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
 ## When to Apply
 
 Reference these guidelines when:
-- Designing database schemas and table structures
-- Writing queries or optimizing query performance
-- Choosing table engines and configuring tables
-- Implementing indexes or materialized views
-- Setting up distributed clusters
-- Monitoring and maintaining ClickHouse instances
+- Creating new tables with `CREATE TABLE`
+- Choosing ORDER BY / PRIMARY KEY columns
+- Selecting data types for columns
+- Queries running slower than expected
+- Writing or optimizing JOINs
+- Designing data ingestion pipelines
+- Handling updates or deletes
 
 ## Rule Categories by Priority
 
 | Priority | Category | Impact | Prefix |
 |----------|----------|--------|--------|
-| 1 | Schema Design | CRITICAL | `schema-` |
-| 2 | Query Optimization | CRITICAL | `query-` |
-| 3 | Table Engines | HIGH | `table-` |
-| 4 | Indexing Strategies | HIGH | `index-` |
-| 5 | Materialized Views | MEDIUM-HIGH | `materialized-` |
-| 6 | Distributed Operations | MEDIUM | `cluster-` |
-| 7 | Operations & Monitoring | MEDIUM | `ops-` |
-| 8 | Performance Tuning | LOW-MEDIUM | `performance-` |
+| 1 | Primary Key Selection | CRITICAL | `schema-pk-` |
+| 2 | Data Type Selection | CRITICAL | `schema-types-` |
+| 3 | JOIN Optimization | CRITICAL | `query-join-` |
+| 4 | Insert Batching | CRITICAL | `insert-batch-` |
+| 5 | Mutation Avoidance | CRITICAL | `insert-mutation-` |
+| 6 | Partitioning Strategy | HIGH | `schema-partition-` |
+| 7 | Skipping Indices | HIGH | `query-index-` |
+| 8 | Materialized Views | HIGH | `query-mv-` |
+| 9 | Async Inserts | HIGH | `insert-async-` |
+| 10 | OPTIMIZE Avoidance | HIGH | `insert-optimize-` |
+| 11 | JSON Usage | MEDIUM | `schema-json-` |
 
 ## Quick Reference
 
-### 1. Schema Design (CRITICAL)
+### 1. Schema Design - Primary Key (CRITICAL)
 
-Proper schema design is foundational to ClickHouse performance. Column types, ordering, and nullable choices can impact query speed by orders of magnitude.
+- `schema-pk-plan-before-creation` - Plan ORDER BY before table creation (immutable)
+- `schema-pk-cardinality-order` - Order columns low-to-high cardinality
+- `schema-pk-prioritize-filters` - Include frequently filtered columns
+- `schema-pk-filter-on-orderby` - Query filters must use ORDER BY prefix
 
-### 2. Query Optimization (CRITICAL)
+### 2. Schema Design - Data Types (CRITICAL)
 
-Query patterns dramatically affect performance. PREWHERE, join order, and aggregation strategies can reduce query time from minutes to milliseconds.
+- `schema-types-native-types` - Use native types, not String for everything
+- `schema-types-minimize-bitwidth` - Use smallest numeric type that fits
+- `schema-types-lowcardinality` - LowCardinality for <10K unique strings
+- `schema-types-enum` - Enum for finite value sets with validation
+- `schema-types-avoid-nullable` - Avoid Nullable; use DEFAULT instead
 
-Example rules:
-- `query-use-prewhere` - Use PREWHERE for early filtering before reading columns
+### 3. Schema Design - Partitioning (HIGH)
 
-### 3. Table Engines (HIGH)
+- `schema-partition-low-cardinality` - Keep partition count 100-1,000
+- `schema-partition-lifecycle` - Use partitioning for data lifecycle, not queries
+- `schema-partition-query-tradeoffs` - Understand partition pruning trade-offs
+- `schema-partition-start-without` - Consider starting without partitioning
 
-Choosing the right table engine family determines data guarantees, deduplication behavior, and query performance characteristics.
+### 4. Schema Design - JSON (MEDIUM)
 
-### 4. Indexing Strategies (HIGH)
+- `schema-json-when-to-use` - JSON for dynamic schemas; typed columns for known
 
-Primary keys and secondary indexes (skip indexes, bloom filters) enable efficient data pruning and can reduce scanned data by 100×.
+### 5. Query Optimization - JOINs (CRITICAL)
 
-### 5. Materialized Views (MEDIUM-HIGH)
+- `query-join-choose-algorithm` - Select algorithm based on table sizes
+- `query-join-use-any` - ANY JOIN when only one match needed
+- `query-join-filter-before` - Filter tables before joining
+- `query-join-consider-alternatives` - Dictionaries/denormalization vs JOIN
+- `query-join-null-handling` - join_use_nulls=0 for default values
 
-Materialized views enable real-time aggregations and pre-computed queries, trading storage for query speed.
+### 6. Query Optimization - Indices (HIGH)
 
-### 6. Distributed Operations (MEDIUM)
+- `query-index-skipping-indices` - Skipping indices for non-ORDER BY filters
 
-Sharding and replication patterns affect data distribution, query parallelism, and fault tolerance.
+### 7. Query Optimization - Materialized Views (HIGH)
 
-### 7. Operations & Monitoring (MEDIUM)
+- `query-mv-incremental` - Incremental MVs for real-time aggregations
+- `query-mv-refreshable` - Refreshable MVs for complex joins
 
-Operational practices for monitoring, backups, mutations, and system table queries ensure database health.
+### 8. Insert Strategy - Batching (CRITICAL)
 
-### 8. Performance Tuning (LOW-MEDIUM)
+- `insert-batch-size` - Batch 10K-100K rows per INSERT
 
-Settings, compression codecs, memory limits, and buffer tuning for specific workloads.
+### 9. Insert Strategy - Async (HIGH)
+
+- `insert-async-small-batches` - Async inserts for high-frequency small batches
+- `insert-format-native` - Native format for best performance
+
+### 10. Insert Strategy - Mutations (CRITICAL)
+
+- `insert-mutation-avoid-update` - ReplacingMergeTree instead of ALTER UPDATE
+- `insert-mutation-avoid-delete` - Lightweight DELETE or DROP PARTITION
+
+### 11. Insert Strategy - Optimization (HIGH)
+
+- `insert-optimize-avoid-final` - Let background merges work
 
 ## How to Use
 
-Read individual rule files for detailed explanations and SQL examples:
+Read individual rule files for detailed explanations and code examples:
 
 ```
-rules/query-use-prewhere.md
+rules/schema-pk-cardinality-order.md
+rules/query-join-filter-before.md
 rules/_sections.md
-rules/_template.md
 ```
 
 Each rule file contains:
-- Brief explanation of why it matters for ClickHouse
-- Incorrect SQL example with explanation
-- Correct SQL example with explanation
+- Brief explanation of why it matters
+- Incorrect code example
+- Correct code example
 - Additional context and references
 
 ## Full Compiled Document

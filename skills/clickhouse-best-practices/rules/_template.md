@@ -1,28 +1,28 @@
 ---
 title: Rule Title Here
-impact: CRITICAL | HIGH | MEDIUM-HIGH | MEDIUM | LOW-MEDIUM | LOW
-impactDescription: Optional description (e.g., "10-100× query speedup")
-tags: clickhouse, query-optimization, schema-design
+impact: CRITICAL | HIGH | MEDIUM | LOW
+impactDescription: "Quantified improvement (e.g., 10x faster queries)"
+tags: [tag1, tag2]
 ---
 
 ## Rule Title Here
 
-Brief explanation of the rule and why it matters for ClickHouse performance or correctness.
+**Impact: CRITICAL** (optional description)
 
-**Incorrect:**
+Brief explanation of the rule and why it matters. This should be clear and concise, explaining the performance implications.
 
-```sql
--- Bad example with explanation
-SELECT * FROM table WHERE condition
-```
-
-**Correct:**
+**Incorrect (description of what's wrong):**
 
 ```sql
--- Good example with explanation
-SELECT column1, column2 FROM table PREWHERE condition
+-- Bad: description
+SELECT * FROM table;
 ```
 
-Additional context, trade-offs, or when this rule applies.
+**Correct (description of what's right):**
 
-Reference: [ClickHouse Documentation](https://clickhouse.com/docs/...)
+```sql
+-- Good: description
+SELECT * FROM table;
+```
+
+Reference: [Official Docs](https://clickhouse.com/docs/best-practices/...)
