@@ -53,7 +53,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "akgent-skills: ClickHouse Best Practices CI completed successfully",
+              "text": "agent-skills: ClickHouse Best Practices CI completed successfully",
               "blocks": [
                 {
                   "type": "section",
