@@ -6,7 +6,7 @@
 npx add-skill clickhouse/agent-skills
 ```
 
-This adds the skills to your project's `.cursor/skills/` directory (or equivalent for your agent).
+The CLI auto-detects installed agents and prompts you to select where to install.
 
 ## What is this?
 
@@ -59,6 +59,26 @@ Example prompt:
 
 The agent will apply relevant rules like proper column ordering in the primary key, appropriate data types, and partitioning strategy.
 
+## Supported Agents
+
+Skills are **agent-agnostic**—the same skill works across all supported AI coding assistants:
+
+| Agent | Config Directory |
+|-------|------------------|
+| [Claude Code](https://claude.ai/code) | `.claude/skills/` |
+| [Cursor](https://cursor.sh) | `.cursor/skills/` |
+| [Windsurf](https://codeium.com/windsurf) | `.windsurf/skills/` |
+| [GitHub Copilot](https://github.com/features/copilot) | `.github/skills/` |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `.gemini/skills/` |
+| [Cline](https://github.com/cline/cline) | `.cline/skills/` |
+| [Codex](https://openai.com/codex) | `.codex/skills/` |
+| [Goose](https://github.com/block/goose) | `.goose/skills/` |
+| [Roo Code](https://roo.ai) | `.roo/skills/` |
+| [OpenHands](https://github.com/All-Hands-AI/OpenHands) | `.openhands/skills/` |
+
+And 13 more including Amp, Kiro CLI, Trae, Zencoder, and others.
+
+The installer detects which agents you have by checking for their configuration directories. If an agent isn't listed, either install it first or create its config directory manually (e.g., `mkdir -p ~/.cursor`).
 
 ## License
 
