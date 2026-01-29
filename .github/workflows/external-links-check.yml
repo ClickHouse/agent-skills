@@ -14,9 +14,9 @@ jobs:
         working-directory: packages/clickhouse-best-practices-build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v1.2.2
         with:
           bun-version: latest
 
@@ -28,7 +28,7 @@ jobs:
 
       - name: Send Slack notification on failure
         if: failure()
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.27.0
         with:
           webhook-url: ${{ secrets.RELEASE_SLACK_WEBHOOK }}
           payload: |

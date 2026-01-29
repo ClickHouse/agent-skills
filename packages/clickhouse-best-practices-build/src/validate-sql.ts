@@ -88,18 +88,85 @@ async function ensureClickHouse(): Promise<boolean> {
 }
 
 /**
+ * Check if SQL contains dangerous patterns that could access external resources
+ * Handles various obfuscation techniques: comments, whitespace, case variations
+ */
+function containsDangerousPatterns(sql: string): string | null {
+  // Remove comments to prevent bypass via file/**/() or file--\n()
+  const sqlNoComments = sql
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')  // Remove /* */ comments
+    .replace(/--[^\n]*/g, ' ')           // Remove -- comments
+    .replace(/\s+/g, ' ')                // Normalize whitespace
+
+  const dangerous = [
+    // File and network access
+    { pattern: /\bfile\s*\(/i, description: 'file() table function (file system access)' },
+    { pattern: /\burl\s*\(/i, description: 'url() table function (HTTP access)' },
+    { pattern: /\bs3\s*\(/i, description: 's3() table function (cloud storage access)' },
+
+    // Database connections
+    { pattern: /\bmysql\s*\(/i, description: 'mysql() table function (database access)' },
+    { pattern: /\bpostgresql\s*\(/i, description: 'postgresql() table function (database access)' },
+    { pattern: /\bmongodb\s*\(/i, description: 'mongodb() table function (database access)' },
+    { pattern: /\bhdfs\s*\(/i, description: 'hdfs() table function (HDFS access)' },
+    { pattern: /\bodbc\s*\(/i, description: 'odbc() table function (ODBC access)' },
+    { pattern: /\bjdbc\s*\(/i, description: 'jdbc() table function (JDBC access)' },
+
+    // Command execution and remote access
+    { pattern: /\bexecutable\s*\(/i, description: 'executable() table function (command execution)' },
+    { pattern: /\bremote\s*\(/i, description: 'remote() table function (remote server access)' },
+    { pattern: /\bcluster\s*\(/i, description: 'cluster() table function (cluster access)' },
+    { pattern: /\binput\s*\(/i, description: 'input() table function (stdin access)' },
+
+    // Timing and error-based exfiltration
+    { pattern: /\bsleep\s*\(/i, description: 'sleep() function (timing attack vector)' },
+    { pattern: /\bthrowIf\s*\(/i, description: 'throwIf() function (error-based exfiltration)' },
+
+    // Note: system.* tables are allowed as they're commonly used in examples
+    // and clickhouse-local runs in isolation with no sensitive data
+  ]
+
+  for (const { pattern, description } of dangerous) {
+    if (pattern.test(sqlNoComments)) {
+      return `Security: SQL contains dangerous pattern: ${description}`
+    }
+  }
+
+  return null
+}
+
+/**
  * Validate a single SQL snippet
  */
 async function validateSQL(sql: string): Promise<string | null> {
+  // First check for dangerous patterns
+  const dangerousPattern = containsDangerousPatterns(sql)
+  if (dangerousPattern) {
+    return dangerousPattern
+  }
+
   // Write SQL to temporary file
   const tmpFile = join(tmpdir(), `clickhouse-validate-${Date.now()}.sql`)
   await writeFile(tmpFile, sql, 'utf-8')
 
   try {
-    // Run clickhouse-local with the SQL file
-    // We use FORMAT Null to avoid any output, just check syntax
+    // Run clickhouse-local with the SQL file in restricted mode
+    // Security restrictions to prevent arbitrary file/network access:
+    // - readonly=2: Strictest readonly mode, blocks DDL and writes
+    // - allow_introspection_functions=0: Blocks introspection functions
+    // - allow_ddl=0: Explicitly disable DDL operations
+    // - max_execution_time=10: Kill queries after 10 seconds (DoS protection)
+    // - max_memory_usage=100000000: Limit memory to 100MB (DoS protection)
+    // - max_rows_to_read=1000000: Limit rows read (DoS protection)
+    // - user_files_path: Set to nonexistent path to block file() function
+    // - format_schema_path: Set to nonexistent path to block schema loading
+    // Note: Pattern blocking provides primary defense; these are secondary
     const { stderr } = await execAsync(
-      `"${CLICKHOUSE_BINARY}" local --query "$(cat "${tmpFile}")" --output-format Null 2>&1 || true`
+      `"${CLICKHOUSE_BINARY}" local --query-file "${tmpFile}" --output-format Null ` +
+      `--readonly=2 --allow_introspection_functions=0 --allow_ddl=0 ` +
+      `--max_execution_time=10 --max_memory_usage=100000000 --max_rows_to_read=1000000 ` +
+      `--user_files_path="/dev/null" --format_schema_path="/dev/null" ` +
+      `2>&1 || true`
     )
 
     // ClickHouse returns errors in stderr
