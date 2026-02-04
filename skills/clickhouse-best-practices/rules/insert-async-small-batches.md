@@ -45,6 +45,42 @@ ALTER USER my_app_user SETTINGS
 - Time threshold `async_insert_busy_timeout_ms` elapses
 - Maximum insert queries accumulate
 
+**MooseStack - Stream-based buffering (preferred):**
+
+MooseStack's IngestPipeline and Streams provide built-in buffering via Kafka, which is typically more robust than async inserts:
+
+```typescript
+import { IngestPipeline } from "@514labs/moose-lib";
+
+// Kafka provides buffering for high-frequency small events
+const pipeline = new IngestPipeline<Event>("events", {
+  ingestApi: true,   // Accept individual events via API
+  stream: true,      // Kafka buffers and batches
+  table: true        // Efficient bulk writes to ClickHouse
+});
+// Each API call is buffered via Kafka - no async_insert needed
+```
+
+```python
+from moose_lib import IngestPipeline, IngestPipelineConfig
+
+# Kafka provides buffering for high-frequency small events
+pipeline = IngestPipeline[Event]("events", IngestPipelineConfig(
+    ingest_api=True,   # Accept individual events via API
+    stream=True,       # Kafka buffers and batches
+    table=True         # Efficient bulk writes to ClickHouse
+))
+# Each API call is buffered via Kafka - no async_insert needed
+```
+
+**When to use async_insert vs MooseStack streams:**
+
+| Scenario | Recommendation |
+|----------|----------------|
+| High-frequency events from API | Use IngestPipeline with Kafka |
+| Direct ClickHouse client inserts | Enable async_insert |
+| Bulk ETL loads | Use OlapTable.insert() with proper batching |
+
 **Return modes:**
 
 | Setting | Behavior | Use Case |

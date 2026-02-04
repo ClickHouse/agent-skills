@@ -21,6 +21,25 @@ CREATE TABLE events (
 )
 ```
 
+**MooseStack - Incorrect (plain strings):**
+
+```typescript
+// TypeScript - plain strings store each value repeatedly
+interface Event {
+  country: string;      // "United States" stored 500M times
+  browser: string;      // "Chrome" stored 300M times
+  eventType: string;    // "page_view" stored 800M times
+}
+```
+
+```python
+# Python - plain strings store each value repeatedly
+class Event(BaseModel):
+    country: str       # "United States" stored 500M times
+    browser: str       # "Chrome" stored 300M times
+    event_type: str    # "page_view" stored 800M times
+```
+
 **Correct (LowCardinality for low unique counts):**
 
 ```sql
@@ -29,6 +48,35 @@ CREATE TABLE events (
     browser LowCardinality(String),      -- ~50 unique values
     event_type LowCardinality(String)    -- ~100 unique values
 )
+```
+
+**MooseStack - Correct (LowCardinality annotation):**
+
+```typescript
+import { Key, LowCardinality, OlapTable } from "@514labs/moose-lib";
+
+interface Event {
+  id: Key<string>;
+  country: string & LowCardinality;      // LowCardinality(String) - ~200 unique values
+  browser: string & LowCardinality;      // LowCardinality(String) - ~50 unique values
+  eventType: string & LowCardinality;    // LowCardinality(String) - ~100 unique values
+}
+
+export const eventsTable = new OlapTable<Event>("events");
+```
+
+```python
+from typing import Annotated
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    country: Annotated[str, "LowCardinality"]      # LowCardinality(String) - ~200 unique values
+    browser: Annotated[str, "LowCardinality"]      # LowCardinality(String) - ~50 unique values
+    event_type: Annotated[str, "LowCardinality"]   # LowCardinality(String) - ~100 unique values
+
+events_table = OlapTable[Event]("events")
 ```
 
 **When to use LowCardinality:**

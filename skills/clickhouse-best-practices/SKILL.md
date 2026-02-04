@@ -1,37 +1,57 @@
 ---
-name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 28 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+name: moosestack-clickhouse-best-practices
+description: MUST USE when reviewing MooseStack data models, ClickHouse schemas, queries, or configurations. Contains 28 rules with MooseStack TypeScript/Python examples. Always read relevant rule files and cite specific rules in responses.
 license: Apache-2.0
 metadata:
-  author: ClickHouse Inc
+  author: 514 Labs (forked from ClickHouse Inc)
   version: "0.3.0"
 ---
 
-# ClickHouse Best Practices
+# MooseStack ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, and data ingestion. Contains 28 rules across 3 main categories (schema, query, insert), prioritized by impact.
+Comprehensive guidance for ClickHouse in MooseStack applications covering data model design, query optimization, and data ingestion. Contains 28 rules across 3 main categories (schema, query, insert), prioritized by impact. Each rule includes MooseStack TypeScript and Python examples.
 
-> **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
+> **MooseStack docs:** [MooseStack Documentation](https://docs.fiveonefour.com/moosestack)
+> **ClickHouse docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
 ## IMPORTANT: How to Apply This Skill
 
-**Before answering ClickHouse questions, follow this priority order:**
+**Before answering MooseStack/ClickHouse questions, follow this priority order:**
 
 1. **Check for applicable rules** in the `rules/` directory
 2. **If rules exist:** Apply them and cite them in your response using "Per `rule-name`..."
-3. **If no rule exists:** Use the LLM's ClickHouse knowledge or search documentation
-4. **If uncertain:** Use web search for current best practices
-5. **Always cite your source:** rule name, "general ClickHouse guidance", or URL
+3. **Apply MooseStack patterns:** Each rule includes TypeScript and Python examples for data models, OlapTables, and APIs
+4. **If no rule exists:** Use MooseStack or ClickHouse documentation
+5. **If uncertain:** Use web search for current best practices
+6. **Always cite your source:** rule name, "general MooseStack guidance", or URL
 
-**Why rules take priority:** ClickHouse has specific behaviors (columnar storage, sparse indexes, merge tree mechanics) where general database intuition can be misleading. The rules encode validated, ClickHouse-specific guidance.
+**Why rules take priority:** ClickHouse has specific behaviors (columnar storage, sparse indexes, merge tree mechanics) where general database intuition can be misleading. The rules encode validated guidance with MooseStack-specific patterns for TypeScript and Python.
 
 ### For Formal Reviews
 
-When performing a formal review of schemas, queries, or data ingestion:
+When performing a formal review of MooseStack data models, schemas, queries, or data ingestion:
 
 ---
 
 ## Review Procedures
+
+### For MooseStack Data Model Reviews (TypeScript/Python)
+
+**Read these rule files in order:**
+
+1. `rules/schema-types-native-types.md` - Type annotation mapping
+2. `rules/schema-types-minimize-bitwidth.md` - Use `UInt8`, `UInt16` etc.
+3. `rules/schema-types-lowcardinality.md` - `string & LowCardinality` annotation
+4. `rules/schema-types-avoid-nullable.md` - `ClickHouseDefault` instead of `?`
+5. `rules/schema-pk-cardinality-order.md` - `orderByFields` ordering
+6. `rules/schema-partition-lifecycle.md` - `partitionByField` and TTL
+
+**Check for:**
+- [ ] Proper type annotations (`Key<T>`, `UInt64`, `LowCardinality`, etc.)
+- [ ] `OlapTable` has `orderByFields` in low-to-high cardinality order
+- [ ] Optional fields use `ClickHouseDefault` instead of `?` where possible
+- [ ] `engine` specified for update/delete patterns (ReplacingMergeTree, etc.)
+- [ ] `indexes` for non-ORDER BY filter columns
 
 ### For Schema Reviews (CREATE TABLE, ALTER TABLE)
 
@@ -202,6 +222,15 @@ Structure your response as follows:
 
 This skill activates when you encounter:
 
+**MooseStack Triggers:**
+- MooseStack data model definitions (TypeScript interfaces or Python Pydantic models)
+- `OlapTable` configuration
+- `IngestPipeline` setup
+- `MaterializedView` definitions
+- `Api` query handlers with ClickHouse queries
+- Type annotation questions (`Key`, `LowCardinality`, `UInt64`, etc.)
+
+**ClickHouse Triggers:**
 - `CREATE TABLE` statements
 - `ALTER TABLE` modifications
 - `ORDER BY` or `PRIMARY KEY` discussions
@@ -221,8 +250,12 @@ Each rule file in `rules/` contains:
 
 - **YAML frontmatter**: title, impact level, tags
 - **Brief explanation**: Why this rule matters
-- **Incorrect example**: Anti-pattern with explanation
-- **Correct example**: Best practice with explanation
+- **Incorrect example**: Anti-pattern with SQL explanation
+- **Correct example**: Best practice with SQL explanation
+- **MooseStack examples**: TypeScript and Python code showing how to implement the pattern
+  - Data model type annotations
+  - OlapTable configuration
+  - API query patterns where relevant
 - **Additional context**: Trade-offs, when to apply, references
 
 ---

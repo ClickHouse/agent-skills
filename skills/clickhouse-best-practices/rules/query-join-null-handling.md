@@ -30,4 +30,23 @@ LEFT JOIN customers c ON c.id = o.customer_id;
 | `join_use_nulls = 0` | Default values (empty string, 0) for non-matches | When you can handle default values |
 | `join_use_nulls = 1` (default) | NULL for non-matches | When you need to distinguish "no match" from "matched with default" |
 
+**MooseStack - Apply in SQL queries:**
+
+```typescript
+import { Api } from "@514labs/moose-lib";
+
+const ordersApi = new Api<QueryParams, Result[]>(
+  "orders",
+  async (params, { client }) => {
+    const query = `
+      SELECT o.order_id, c.name
+      FROM orders o
+      LEFT JOIN customers c ON c.id = o.customer_id
+      SETTINGS join_use_nulls = 0
+    `;
+    return client.query(query);
+  }
+);
+```
+
 Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)

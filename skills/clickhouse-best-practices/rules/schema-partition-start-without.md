@@ -30,6 +30,44 @@ ORDER BY (event_type, timestamp);
 -- (requires table recreation or materialized view migration)
 ```
 
+**MooseStack - Start simple (no partitioning):**
+
+```typescript
+import { Key, LowCardinality, UInt64, OlapTable } from "@514labs/moose-lib";
+
+interface Event {
+  id: Key<string>;
+  timestamp: Date;
+  eventType: string & LowCardinality;
+  userId: UInt64;
+}
+
+// Start simple - no partitioning
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventType", "timestamp"]
+  // No partitionByField - add later if needed for lifecycle management
+});
+```
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    event_type: Annotated[str, "LowCardinality"]
+    user_id: Annotated[int, "uint64"]
+
+# Start simple - no partitioning
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"]
+    # No partition_by_field - add later if needed for lifecycle management
+})
+```
+
 **When to add partitioning:**
 
 | Need | Add Partitioning? |

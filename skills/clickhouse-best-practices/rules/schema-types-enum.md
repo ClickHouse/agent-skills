@@ -27,6 +27,21 @@ SELECT * FROM orders ORDER BY
     END;
 ```
 
+**MooseStack - Incorrect (plain string):**
+
+```typescript
+// TypeScript - No validation, any string allowed
+interface Order {
+  status: string;  // No validation
+}
+```
+
+```python
+# Python - No validation, any string allowed
+class Order(BaseModel):
+    status: str  # No validation
+```
+
 **Correct (Enum with validation and ordering):**
 
 ```sql
@@ -43,6 +58,56 @@ SELECT * FROM orders ORDER BY status;  -- Orders by enum value (1, 2, 3, 4)
 -- Comparisons use natural order
 SELECT * FROM orders WHERE status > 'processing';  -- shipped and delivered
 ```
+
+**MooseStack - Correct (TypeScript enum):**
+
+```typescript
+import { Key, OlapTable } from "@514labs/moose-lib";
+
+// Define enum with explicit values for ordering
+enum OrderStatus {
+  PENDING = "pending",
+  PROCESSING = "processing",
+  SHIPPED = "shipped",
+  DELIVERED = "delivered"
+}
+
+interface Order {
+  id: Key<string>;
+  status: OrderStatus;  // Maps to Enum8 in ClickHouse
+}
+
+export const ordersTable = new OlapTable<Order>("orders");
+```
+
+**MooseStack - Correct (Python enum):**
+
+```python
+from enum import Enum
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+# Define enum with explicit values for ordering
+class OrderStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+
+class Order(BaseModel):
+    id: Key[str]
+    status: OrderStatus  # Maps to Enum8 in ClickHouse
+
+orders_table = OlapTable[Order]("orders")
+```
+
+**MooseStack Enum Guidelines:**
+
+| Scenario | TypeScript | Python |
+|----------|------------|--------|
+| Fixed set of values | `enum Status { ... }` | `class Status(str, Enum)` |
+| Numeric enum | `enum Priority { LOW = 1, HIGH = 2 }` | `class Priority(IntEnum)` |
+| String literal union | `"pending" \| "shipped"` | `Literal["pending", "shipped"]` |
 
 **Enum Guidelines:**
 

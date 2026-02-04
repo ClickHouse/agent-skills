@@ -71,4 +71,64 @@ ALTER TABLE events DELETE WHERE toYYYYMM(timestamp) = 202301;
 | Lightweight DELETE | Medium | Occasional deletes |
 | DROP PARTITION | Instant | Bulk deletion by partition |
 
+**MooseStack - CollapsingMergeTree for soft deletes:**
+
+```typescript
+import { Key, UInt64, Int8, Decimal, OlapTable } from "@514labs/moose-lib";
+
+interface Order {
+  orderId: Key<UInt64>;
+  customerId: UInt64;
+  total: Decimal<10, 2>;
+  sign: Int8;  // 1 = active, -1 = deleted
+}
+
+// Use CollapsingMergeTree engine for soft delete patterns
+export const ordersTable = new OlapTable<Order>("orders", {
+  orderByFields: ["orderId"],
+  engine: "CollapsingMergeTree(sign)"
+});
+
+// Insert order (sign = 1)
+await ordersTable.insert([{ orderId: 123, customerId: 456, total: "99.99", sign: 1 }]);
+
+// "Delete" order by inserting with sign = -1
+await ordersTable.insert([{ orderId: 123, customerId: 456, total: "99.99", sign: -1 }]);
+```
+
+```python
+from typing import Annotated
+from decimal import Decimal
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_decimal
+
+class Order(BaseModel):
+    order_id: Key[int]
+    customer_id: Annotated[int, "uint64"]
+    total: clickhouse_decimal(10, 2)
+    sign: Annotated[int, "int8"]  # 1 = active, -1 = deleted
+
+# Use CollapsingMergeTree engine for soft delete patterns
+orders_table = OlapTable[Order]("orders", {
+    "order_by_fields": ["order_id"],
+    "engine": "CollapsingMergeTree(sign)"
+})
+
+# Insert order (sign = 1)
+await orders_table.insert([Order(order_id=123, customer_id=456, total=Decimal("99.99"), sign=1)])
+
+# "Delete" order by inserting with sign = -1
+await orders_table.insert([Order(order_id=123, customer_id=456, total=Decimal("99.99"), sign=-1)])
+```
+
+**MooseStack - TTL for automatic data lifecycle:**
+
+```typescript
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventType", "timestamp"],
+  partitionByField: "toStartOfMonth(timestamp)",
+  ttl: "timestamp + INTERVAL 90 DAY DELETE"  // Auto-delete old data
+});
+```
+
 Reference: [Avoid Mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)

@@ -65,4 +65,70 @@ GROUP BY event_type, hour;
 - Incremental - existing data not automatically included (backfill separately)
 - Minimal cluster overhead at insert time
 
+**MooseStack - Incremental Materialized Views:**
+
+```typescript
+import { Key, LowCardinality, OlapTable, MaterializedView } from "@514labs/moose-lib";
+
+// Source table
+interface Event {
+  id: Key<string>;
+  eventType: string & LowCardinality;
+  timestamp: Date;
+  userId: number;
+}
+
+// Aggregated data model
+interface EventHourly {
+  eventType: string & LowCardinality;
+  hour: Date;
+  events: number;      // Will use AggregateFunction in target table
+  uniqueUsers: number; // Will use AggregateFunction in target table
+}
+
+export const eventsTable = new OlapTable<Event>("events");
+
+// Target table for aggregated data
+export const eventsHourlyTable = new OlapTable<EventHourly>("events_hourly", {
+  orderByFields: ["eventType", "hour"],
+  engine: "AggregatingMergeTree()"
+});
+
+// Incremental MV that populates events_hourly from events
+export const eventsHourlyMV = new MaterializedView<Event, EventHourly>({
+  name: "events_hourly_mv",
+  source: eventsTable,
+  destination: eventsHourlyTable,
+  query: `
+    SELECT
+      event_type,
+      toStartOfHour(timestamp) as hour,
+      countState() as events,
+      uniqState(user_id) as unique_users
+    FROM events
+    GROUP BY event_type, hour
+  `
+});
+```
+
+```python
+from moose_lib import Key, OlapTable, MaterializedView
+
+# Incremental MV that populates events_hourly from events
+events_hourly_mv = MaterializedView(
+    name="events_hourly_mv",
+    source=events_table,
+    destination=events_hourly_table,
+    query="""
+      SELECT
+        event_type,
+        toStartOfHour(timestamp) as hour,
+        countState() as events,
+        uniqState(user_id) as unique_users
+      FROM events
+      GROUP BY event_type, hour
+    """
+)
+```
+
 Reference: [Use Materialized Views](https://clickhouse.com/docs/best-practices/use-materialized-views)

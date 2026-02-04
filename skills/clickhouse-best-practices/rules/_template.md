@@ -25,4 +25,41 @@ SELECT * FROM table;
 SELECT * FROM table;
 ```
 
+**MooseStack - [Context-specific heading]:**
+
+For schema rules, show how to express this in MooseStack data models. For query rules, show how to apply in APIs or materialized views.
+
+```typescript
+import { Key, OlapTable } from "@514labs/moose-lib";
+
+// TypeScript data model example
+interface Example {
+  id: Key<string>;
+  // ... relevant fields with proper types
+}
+
+// OlapTable configuration if relevant
+export const exampleTable = new OlapTable<Example>("example", {
+  orderByFields: ["field1", "field2"],
+  // ... other relevant options
+});
+```
+
+```python
+from moose_lib import Key, OlapTable
+from pydantic import BaseModel
+from typing import Annotated
+
+# Python data model example
+class Example(BaseModel):
+    id: Key[str]
+    # ... relevant fields with proper types
+
+# OlapTable configuration if relevant
+example_table = OlapTable[Example]("example", {
+    "order_by_fields": ["field1", "field2"],
+    # ... other relevant options
+})
+```
+
 Reference: [Official Docs](https://clickhouse.com/docs/best-practices/...)

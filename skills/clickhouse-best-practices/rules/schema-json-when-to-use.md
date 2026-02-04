@@ -29,6 +29,38 @@ CREATE TABLE events (
 )
 ```
 
+**MooseStack - Incorrect (schema bloat or opaque String):**
+
+```typescript
+// TypeScript - BAD: Hundreds of nullable columns for event properties
+interface Event {
+  eventId: Key<string>;
+  propPageUrl?: string;
+  propButtonId?: string;
+  // ... 100 more optional fields - maintenance nightmare!
+}
+
+// TypeScript - BAD: JSON stored as opaque string
+interface Event {
+  eventId: Key<string>;
+  properties: string;  // No field-level optimization
+}
+```
+
+```python
+# Python - BAD: Hundreds of nullable columns for event properties
+class Event(BaseModel):
+    event_id: Key[str]
+    prop_page_url: Optional[str] = None
+    prop_button_id: Optional[str] = None
+    # ... 100 more optional fields - maintenance nightmare!
+
+# Python - BAD: JSON stored as opaque string
+class Event(BaseModel):
+    event_id: Key[str]
+    properties: str  # No field-level optimization
+```
+
 **Correct (JSON for dynamic, typed for known):**
 
 ```sql
@@ -49,6 +81,46 @@ SELECT
     properties.amount as purchase_amount
 FROM events
 WHERE event_type = 'page_view' AND properties.url = '/home';
+```
+
+**MooseStack - Correct (JSON type for dynamic properties):**
+
+```typescript
+import { Key, LowCardinality, OlapTable, ClickHouseDefault } from "@514labs/moose-lib";
+
+interface Event {
+  eventId: Key<string>;
+  eventType: string & LowCardinality;
+  timestamp: Date & ClickHouseDefault<"now()">;
+  properties: Record<string, any>;  // Maps to JSON type in ClickHouse
+}
+
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventType", "timestamp"]
+});
+
+// Query JSON paths directly in your SQL:
+// SELECT event_type, properties.url as page_url FROM events WHERE properties.url = '/home'
+```
+
+```python
+from typing import Dict, Any, Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_default
+
+class Event(BaseModel):
+    event_id: Key[str]
+    event_type: Annotated[str, "LowCardinality"]
+    timestamp: Annotated[datetime, clickhouse_default("now()")]
+    properties: Dict[str, Any]  # Maps to JSON type in ClickHouse
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"]
+})
+
+# Query JSON paths directly in your SQL:
+# SELECT event_type, properties.url as page_url FROM events WHERE properties.url = '/home'
 ```
 
 **When to use JSON:**

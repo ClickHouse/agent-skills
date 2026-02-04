@@ -54,4 +54,40 @@ SELECT * FROM events FINAL WHERE user_id = 123;
 | Deduplicate ReplacingMergeTree | Use `FINAL` modifier in SELECT |
 | Reduce part count | Rely on background merges |
 
+**MooseStack - Query with FINAL for deduplication:**
+
+When using ReplacingMergeTree in MooseStack, use the `FINAL` modifier in your SELECT queries rather than running `OPTIMIZE TABLE FINAL`:
+
+```typescript
+import { OlapTable } from "@514labs/moose-lib";
+
+const usersTable = new OlapTable<User>("users", {
+  orderByFields: ["userId"],
+  engine: "ReplacingMergeTree(updatedAt)"
+});
+
+// ✅ Good: Use FINAL in queries to get deduplicated results
+const query = `SELECT * FROM users FINAL WHERE user_id = {userId:UInt64}`;
+const result = await usersTable.client.query(query, { userId: 123 });
+
+// ❌ Bad: Don't run OPTIMIZE TABLE FINAL
+// await client.execute("OPTIMIZE TABLE users FINAL");  // Expensive and unnecessary!
+```
+
+```python
+from moose_lib import OlapTable
+
+users_table = OlapTable[User]("users", {
+    "order_by_fields": ["user_id"],
+    "engine": "ReplacingMergeTree(updated_at)"
+})
+
+# ✅ Good: Use FINAL in queries to get deduplicated results
+query = "SELECT * FROM users FINAL WHERE user_id = {userId:UInt64}"
+result = await users_table.client.query(query, {"userId": 123})
+
+# ❌ Bad: Don't run OPTIMIZE TABLE FINAL
+# await client.execute("OPTIMIZE TABLE users FINAL")  # Expensive and unnecessary!
+```
+
 Reference: [Avoid OPTIMIZE FINAL](https://clickhouse.com/docs/best-practices/avoid-optimize-final)

@@ -40,4 +40,27 @@ SELECT * FROM table_a a JOIN table_b b ON b.pk_col = a.pk_col;
 
 **Note:** ClickHouse 24.12+ automatically positions smaller tables on the right side. For earlier versions, manually ensure the smaller table is on the RIGHT.
 
+**MooseStack - Apply JOIN algorithms in your queries:**
+
+When writing SQL queries in MooseStack APIs or materialized views, you can specify JOIN algorithms:
+
+```typescript
+import { Api } from "@514labs/moose-lib";
+
+const largeJoinApi = new Api<QueryParams, Result[]>(
+  "large-join",
+  async (params, { client }) => {
+    // Set algorithm for memory-constrained large joins
+    const query = `
+      SELECT * FROM large_a a
+      JOIN large_b b ON b.id = a.id
+      SETTINGS join_algorithm = 'partial_merge'
+    `;
+    return client.query(query);
+  }
+);
+```
+
+These JOIN optimization patterns apply to any ClickHouse query in your MooseStack application.
+
 Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)

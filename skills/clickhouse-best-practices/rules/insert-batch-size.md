@@ -32,6 +32,55 @@ for batch in chunks(events, BATCH_SIZE):
     client.execute("INSERT INTO events VALUES", batch)
 ```
 
+**MooseStack - Batching handled automatically:**
+
+When using MooseStack's IngestPipeline with Kafka streaming, batching is handled automatically - Kafka buffers messages and the sink writes in efficient batches.
+
+```typescript
+import { IngestPipeline } from "@514labs/moose-lib";
+
+// IngestPipeline uses Kafka - batching is automatic
+const pipeline = new IngestPipeline<Event>("events", {
+  ingestApi: true,   // HTTP API accepts individual events
+  stream: true,      // Kafka buffers events
+  table: true        // Sink writes batches to ClickHouse
+});
+// Individual API calls are buffered via Kafka and inserted in efficient batches
+```
+
+**MooseStack - Direct bulk inserts:**
+
+When using direct OlapTable inserts, batch your data appropriately:
+
+```typescript
+import { OlapTable } from "@514labs/moose-lib";
+
+const eventsTable = new OlapTable<Event>("events");
+
+// ✅ Good: Bulk insert with proper batch size
+const events: Event[] = [...];  // 10,000+ rows
+await eventsTable.insert(events);
+
+// ❌ Bad: Single row inserts in a loop
+for (const event of events) {
+  await eventsTable.insert([event]);  // Creates a part per insert!
+}
+```
+
+```python
+from moose_lib import OlapTable
+
+events_table = OlapTable[Event]("events")
+
+# ✅ Good: Bulk insert with proper batch size
+events: list[Event] = [...]  # 10,000+ rows
+await events_table.insert(events)
+
+# ❌ Bad: Single row inserts in a loop
+for event in events:
+    await events_table.insert([event])  # Creates a part per insert!
+```
+
 **Recommended batch sizes:**
 
 | Threshold | Value |

@@ -4,22 +4,24 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for AI agents working with ClickHouse databases. Skills are packaged instructions and guidelines that extend agent capabilities for database design, query optimization, and operational best practices.
+A collection of skills for AI agents working with MooseStack applications and ClickHouse databases. Skills are packaged instructions and guidelines that extend agent capabilities for data model design, query optimization, and operational best practices. Each rule includes TypeScript and Python examples for MooseStack.
+
+> Forked from [ClickHouse/agent-skills](https://github.com/ClickHouse/agent-skills) with MooseStack examples added.
 
 ## Repository Structure
 
 ```
 agent-skills/
 ├── skills/
-│   └── clickhouse-best-practices/   # ClickHouse optimization guidelines
+│   └── clickhouse-best-practices/   # MooseStack + ClickHouse optimization
 │       ├── SKILL.md                 # Skill definition (overview)
 │       ├── AGENTS.md                # Full compiled guide (generated)
 │       ├── metadata.json            # Version, organization, abstract
 │       ├── README.md                # Maintainer guide
-│       └── rules/                   # Individual rule files
+│       └── rules/                   # Individual rule files with TS/PY examples
 │           ├── _sections.md         # Section metadata
 │           ├── _template.md         # Template for new rules
-│           └── *.md                 # Rule files (e.g., query-use-prewhere.md)
+│           └── *.md                 # Rule files (e.g., query-join-filter-before.md)
 ├── packages/
 │   └── clickhouse-best-practices-build/  # Build tooling
 │       ├── package.json             # Bun scripts
@@ -118,8 +120,9 @@ Use the template in `rules/_template.md`. Each rule file must have:
 
 2. **Rule structure**:
    - Brief explanation of why it matters
-   - **Incorrect:** code example showing the anti-pattern
-   - **Correct:** code example showing the best practice
+   - **Incorrect:** SQL code example showing the anti-pattern
+   - **Correct:** SQL code example showing the best practice
+   - **MooseStack:** TypeScript and Python examples showing implementation
    - Additional context, trade-offs, or when to apply
    - Reference links (optional)
 

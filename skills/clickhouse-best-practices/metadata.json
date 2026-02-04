@@ -1,10 +1,12 @@
 {
-  "version": "0.1.0",
-  "organization": "ClickHouse Inc",
-  "date": "January 2026",
+  "version": "0.4.0",
+  "organization": "514 Labs (forked from ClickHouse Inc)",
+  "date": "February 2026",
   "clickhouseVersion": "24.1+",
-  "abstract": "Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization.",
+  "mooseStackVersion": "1.0+",
+  "abstract": "Comprehensive best practices for ClickHouse database optimization in MooseStack applications. Covers data model design, query optimization, table engines, indexing strategies, materialized views, and ingestion pipelines. Each rule includes SQL examples plus MooseStack TypeScript and Python code showing how to implement patterns in data models, OlapTables, APIs, and MaterializedViews.",
   "references": [
+    "https://docs.fiveonefour.com/moosestack",
     "https://clickhouse.com/docs",
     "https://github.com/ClickHouse/ClickHouse"
   ]

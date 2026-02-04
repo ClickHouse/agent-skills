@@ -69,4 +69,31 @@ JOIN customers c ON c.id = o.customer_id;
 
 **Critical dictionary caveat:** Dictionaries silently deduplicate duplicate keys, retaining only the final value. Only use when source has unique keys.
 
+**MooseStack - Denormalization with Materialized Views:**
+
+MooseStack supports materialized views for denormalization. Instead of repeated JOINs at query time, pre-join data at insert time:
+
+```typescript
+import { MaterializedView, OlapTable } from "@514labs/moose-lib";
+
+// Denormalized view that enriches orders with customer data at insert time
+export const ordersEnrichedMV = new MaterializedView({
+  name: "orders_enriched_mv",
+  source: ordersTable,
+  query: `
+    SELECT
+      o.order_id, o.customer_id,
+      c.name as customer_name,
+      c.email as customer_email,
+      o.total, o.created_at
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+  `,
+  orderByFields: ["createdAt", "orderId"]
+});
+
+// Query the pre-joined data (no JOIN at query time)
+// SELECT * FROM orders_enriched WHERE customer_name = 'John'
+```
+
 Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)

@@ -1,8 +1,8 @@
 # ClickHouse Best Practices
 
-**Version 0.1.0**  
-ClickHouse Inc  
-January 2026
+**Version 0.4.0**  
+514 Labs (forked from ClickHouse Inc)  
+February 2026
 ClickHouse 24.1+
 
 > **Note:**  
@@ -15,7 +15,7 @@ ClickHouse 24.1+
 
 ## Abstract
 
-Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization.
+Comprehensive best practices for ClickHouse database optimization in MooseStack applications. Covers data model design, query optimization, table engines, indexing strategies, materialized views, and ingestion pipelines. Each rule includes SQL examples plus MooseStack TypeScript and Python code showing how to implement patterns in data models, OlapTables, APIs, and MaterializedViews.
 
 ---
 
@@ -78,6 +78,19 @@ CREATE TABLE users (
 )
 ```
 
+**MooseStack - Incorrect (optional fields create Nullable):**
+
+```python
+# Python - Optional fields become Nullable columns
+from typing import Optional
+
+class User(BaseModel):
+    id: Optional[str] = None          # Nullable(String) - IDs should never be null!
+    name: Optional[str] = None        # Nullable(String) - empty string is fine
+    age: Optional[int] = None         # Nullable(Int64) - 0 is a valid default
+    login_count: Optional[int] = None # Nullable(Int64) - 0 is a valid default
+```
+
 **Correct: DEFAULT values, Nullable only when semantic**
 
 ```sql
@@ -89,6 +102,24 @@ CREATE TABLE users (
     deleted_at Nullable(DateTime),                -- NULL = not deleted (semantic!)
     parent_id Nullable(UInt64)                    -- NULL = no parent (semantic!)
 )
+```
+
+**MooseStack - Correct (use ClickHouseDefault, Nullable only when semantic):**
+
+```python
+from typing import Optional, Annotated
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_default
+
+class User(BaseModel):
+    id: Key[int]                                                           # Never null
+    name: Annotated[str, clickhouse_default("''")] = ""                    # DEFAULT '' - empty = unknown
+    age: Annotated[int, "uint8", clickhouse_default("0")] = 0              # DEFAULT 0 - 0 = unknown
+    login_count: Annotated[int, "uint32", clickhouse_default("0")] = 0     # DEFAULT 0 - 0 = never logged in
+    deleted_at: Optional[datetime] = None                                  # Nullable - NULL = not deleted (semantic!)
+    parent_id: Optional[int] = None                                        # Nullable - NULL = no parent (semantic!)
+
+users_table = OlapTable[User]("users")
 ```
 
 **When Nullable IS appropriate:**
@@ -116,6 +147,18 @@ CREATE TABLE users (
 | DateTime | `now()` or `toDateTime(0)` |
 
 | UUID | `generateUUIDv4()` |
+
+**MooseStack Defaults Syntax:**
+
+| Type | TypeScript | Python |
+
+|------|------------|--------|
+
+| String | `string & ClickHouseDefault<"''">` | `Annotated[str, clickhouse_default("''")]` |
+
+| Number | `number & ClickHouseDefault<"0">` | `Annotated[int, clickhouse_default("0")]` |
+
+| DateTime | `Date & ClickHouseDefault<"now()">` | `Annotated[datetime, clickhouse_default("now()")]` |
 
 Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https://clickhouse.com/docs/best-practices/select-data-types)
 
@@ -145,6 +188,27 @@ ORDER BY (event_type, timestamp);
 
 -- Add partitioning later if needed for lifecycle management
 -- (requires table recreation or materialized view migration)
+```
+
+**MooseStack - Start simple (no partitioning):**
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    event_type: Annotated[str, "LowCardinality"]
+    user_id: Annotated[int, "uint64"]
+
+# Start simple - no partitioning
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"]
+    # No partition_by_field - add later if needed for lifecycle management
+})
 ```
 
 **When to add partitioning:**
@@ -180,6 +244,26 @@ SELECT * FROM events WHERE event_type = 'click';
 -- Filter on column not in ORDER BY - full table scan
 SELECT * FROM events WHERE user_agent LIKE '%Chrome%';
 ```
+
+**MooseStack - Schema & Query Example:**
+
+```python
+from moose_lib import Key, OlapTable
+from typing import Annotated
+
+class Event(BaseModel):
+    id: Key[str]
+    tenant_id: int
+    event_type: Annotated[str, "LowCardinality"]
+    timestamp: datetime
+    user_agent: str  # Not in order_by_fields
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["tenant_id", "event_type", "timestamp"]  # Define ordering
+})
+```
+
+**Important:** MooseStack generates the ClickHouse schema, but you must still write queries that use the ORDER BY columns to benefit from the index.
 
 **Correct: uses ORDER BY prefix**
 
@@ -236,6 +320,21 @@ PARTITION BY toDate(timestamp)  -- 3650 partitions over 10 years
 ORDER BY (service, timestamp);
 ```
 
+**MooseStack - Incorrect (high cardinality partitioning):**
+
+```python
+# Python - high cardinality partitioning causes "too many parts" errors
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["timestamp"],
+    "partition_by_field": "user_id"  # Millions of partitions - BAD!
+})
+
+logs_table = OlapTable[Log]("logs", {
+    "order_by_fields": ["service", "timestamp"],
+    "partition_by_field": "toDate(timestamp)"  # 3650 partitions over 10 years - risky!
+})
+```
+
 **Correct: bounded cardinality**
 
 ```sql
@@ -248,6 +347,27 @@ CREATE TABLE events (
 ENGINE = MergeTree()
 PARTITION BY toStartOfMonth(timestamp)
 ORDER BY (event_type, timestamp);
+```
+
+**MooseStack - Correct (bounded cardinality):**
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    event_type: Annotated[str, "LowCardinality"]
+    user_id: Annotated[int, "uint64"]
+
+# Monthly partitions = 12 per year, bounded cardinality
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"],
+    "partition_by_field": "toStartOfMonth(timestamp)"  # 12 partitions per year - GOOD!
+})
 ```
 
 **Validation:**
@@ -286,6 +406,17 @@ CREATE TABLE metrics (
 )
 ```
 
+**MooseStack - Incorrect (default number type is Float64):**
+
+```python
+# Python - int becomes Int64 (8 bytes), float becomes Float64
+class Metrics(BaseModel):
+    status_code: int     # Int64 - overkill for HTTP codes
+    age: int             # Int64 - overkill for age
+    year: int            # Int64 - overkill for years
+    item_count: int      # Int64 - overkill for counts
+```
+
 **Correct: right-sized types**
 
 ```sql
@@ -296,6 +427,45 @@ CREATE TABLE metrics (
     item_count UInt32         -- 0-4 billion (adjust based on actual max)
 )
 ```
+
+**MooseStack - Correct (explicit integer types):**
+
+```python
+from typing import Annotated
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Metrics(BaseModel):
+    id: Key[str]
+    status_code: Annotated[int, "uint16"]    # 0-65,535 (HTTP codes) - 2 bytes
+    age: Annotated[int, "uint8"]             # 0-255 (age) - 1 byte
+    year: Annotated[int, "uint16"]           # 0-65,535 (years) - 2 bytes
+    item_count: Annotated[int, "uint32"]     # 0-4 billion - 4 bytes
+
+metrics_table = OlapTable[Metrics]("metrics")
+```
+
+**MooseStack Type Helpers:**
+
+| Type | TypeScript | Python |
+
+|------|------------|--------|
+
+| UInt8 | `UInt8` | `Annotated[int, "uint8"]` |
+
+| UInt16 | `UInt16` | `Annotated[int, "uint16"]` |
+
+| UInt32 | `UInt32` | `Annotated[int, "uint32"]` |
+
+| UInt64 | `UInt64` | `Annotated[int, "uint64"]` |
+
+| Int8 | `Int8` | `Annotated[int, "int8"]` |
+
+| Int16 | `Int16` | `Annotated[int, "int16"]` |
+
+| Int32 | `Int32` | `Annotated[int, "int32"]` |
+
+| Int64 | `Int64` | `Annotated[int, "int64"]` |
 
 **Numeric Type Reference:**
 
@@ -337,6 +507,15 @@ ORDER BY (event_id, event_type, timestamp);
 -- Every granule has different event_id values, index can't skip anything
 ```
 
+**MooseStack - Incorrect (high cardinality first):**
+
+```python
+# Python - UUID first means no pruning benefit
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_id", "event_type", "timestamp"]  # High cardinality first - bad!
+})
+```
+
 **Correct: low cardinality first**
 
 ```sql
@@ -345,6 +524,26 @@ CREATE TABLE events (...)
 ENGINE = MergeTree()
 ORDER BY (event_type, event_date, event_id);
 -- Index can skip entire event_type groups
+```
+
+**MooseStack - Correct (low cardinality first):**
+
+```python
+from typing import Annotated
+from datetime import date, datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    event_id: Key[str]
+    event_type: Annotated[str, "LowCardinality"]   # Low cardinality
+    event_date: date                               # Date granularity
+    timestamp: datetime
+
+# Low cardinality first enables pruning
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "event_date", "event_id"]  # Low → High cardinality
+})
 ```
 
 **Column Order Guidelines:**
@@ -388,6 +587,20 @@ ORDER BY (event_id);  -- Chosen arbitrarily
 -- ERROR: Cannot modify ORDER BY
 ```
 
+**MooseStack - Incorrect (arbitrary orderByFields):**
+
+```python
+# Python - ordering chosen arbitrarily without query analysis
+class Event(BaseModel):
+    event_id: Key[str]
+    user_id: int
+    timestamp: datetime
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_id"]  # Chosen arbitrarily - will require data migration to fix!
+})
+```
+
 **Correct: query-driven ORDER BY selection**
 
 ```sql
@@ -412,6 +625,36 @@ CREATE TABLE events (
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(event_date)
 ORDER BY (user_id, event_date, event_id);
+```
+
+**MooseStack - Correct (query-driven orderByFields):**
+
+```python
+from typing import Annotated
+from datetime import date, datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_default
+
+"""
+Query Analysis:
+- 60% of queries: WHERE user_id = ? AND timestamp BETWEEN ? AND ?
+- 25% of queries: WHERE event_type = ? AND timestamp > ?
+- 15% of queries: WHERE event_id = ?
+
+Conclusion: user_id is the primary filter
+"""
+
+class Event(BaseModel):
+    event_id: Key[str]
+    user_id: Annotated[int, "uint64"]
+    event_type: Annotated[str, "LowCardinality"]
+    timestamp: datetime
+    event_date: Annotated[date, clickhouse_default("toDate(timestamp)")]
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["user_id", "event_date", "event_id"],  # Matches query patterns
+    "partition_by_field": "toYYYYMM(event_date)"
+})
 ```
 
 **Pre-creation checklist:**
@@ -443,6 +686,15 @@ ENGINE = MergeTree()
 ORDER BY (event_id);  -- Queries by tenant_id will full-scan!
 ```
 
+**MooseStack - Incorrect (orderByFields doesn't match query patterns):**
+
+```python
+# Python - If most queries filter by tenant_id, this is wrong
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_id"]  # Queries by tenant_id will full-scan!
+})
+```
+
 **Correct: ORDER BY matches filter patterns**
 
 ```sql
@@ -453,6 +705,26 @@ ORDER BY (tenant_id, event_date, event_id);
 
 -- Query now uses primary index:
 SELECT * FROM events WHERE tenant_id = 123 AND event_date >= '2024-01-01';
+```
+
+**MooseStack - Correct (orderByFields matches query patterns):**
+
+```python
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    event_id: Key[str]
+    tenant_id: int
+    event_date: date
+    # ... other fields
+
+# ORDER BY matches query filter patterns
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["tenant_id", "event_date", "event_id"]  # Matches WHERE clauses
+})
+
+# Now these queries use the primary index efficiently:
+# SELECT * FROM events WHERE tenant_id = 123 AND event_date >= '2024-01-01'
 ```
 
 **Validation:**
@@ -495,6 +767,29 @@ WHERE timestamp >= '2024-01-01' AND timestamp < '2024-02-01'
   AND event_type = 'click';
 ```
 
+**MooseStack - Schema setup for partition pruning:**
+
+```python
+from moose_lib import Key, OlapTable
+from typing import Annotated
+
+class Event(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    event_type: Annotated[str, "LowCardinality"]
+
+# Define table with time-based partitioning
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"],
+    "partition_by_field": "toStartOfMonth(timestamp)"
+})
+
+# Queries with timestamp filters will benefit from partition pruning
+# Queries without timestamp filters will scan all partitions
+```
+
+**Note:** MooseStack generates the schema - you still need to write efficient queries that include partition key filters.
+
 Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
 
 ### 1.10 Use Enum for Finite Value Sets
@@ -519,6 +814,14 @@ SELECT * FROM orders ORDER BY
     END;
 ```
 
+**MooseStack - Incorrect (plain string):**
+
+```python
+# Python - No validation, any string allowed
+class Order(BaseModel):
+    status: str  # No validation
+```
+
 **Correct: Enum with validation and ordering**
 
 ```sql
@@ -535,6 +838,60 @@ SELECT * FROM orders ORDER BY status;  -- Orders by enum value (1, 2, 3, 4)
 -- Comparisons use natural order
 SELECT * FROM orders WHERE status > 'processing';  -- shipped and delivered
 ```
+
+**MooseStack - Correct (TypeScript enum):**
+
+```typescript
+import { Key, OlapTable } from "@514labs/moose-lib";
+
+// Define enum with explicit values for ordering
+enum OrderStatus {
+  PENDING = "pending",
+  PROCESSING = "processing",
+  SHIPPED = "shipped",
+  DELIVERED = "delivered"
+}
+
+interface Order {
+  id: Key<string>;
+  status: OrderStatus;  // Maps to Enum8 in ClickHouse
+}
+
+export const ordersTable = new OlapTable<Order>("orders");
+```
+
+**MooseStack - Correct (Python enum):**
+
+```python
+from enum import Enum
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+# Define enum with explicit values for ordering
+class OrderStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+
+class Order(BaseModel):
+    id: Key[str]
+    status: OrderStatus  # Maps to Enum8 in ClickHouse
+
+orders_table = OlapTable[Order]("orders")
+```
+
+**MooseStack Enum Guidelines:**
+
+| Scenario | TypeScript | Python |
+
+|----------|------------|--------|
+
+| Fixed set of values | `enum Status { ... }` | `class Status(str, Enum)` |
+
+| Numeric enum | `enum Priority { LOW = 1, HIGH = 2 }` | `class Priority(IntEnum)` |
+
+| String literal union | `"pending" \| "shipped"` | `Literal["pending", "shipped"]` |
 
 **Enum Guidelines:**
 
@@ -580,6 +937,22 @@ CREATE TABLE events (
 )
 ```
 
+**MooseStack - Incorrect (schema bloat or opaque String):**
+
+```python
+# Python - BAD: Hundreds of nullable columns for event properties
+class Event(BaseModel):
+    event_id: Key[str]
+    prop_page_url: Optional[str] = None
+    prop_button_id: Optional[str] = None
+    # ... 100 more optional fields - maintenance nightmare!
+
+# Python - BAD: JSON stored as opaque string
+class Event(BaseModel):
+    event_id: Key[str]
+    properties: str  # No field-level optimization
+```
+
 **Correct: JSON for dynamic, typed for known**
 
 ```sql
@@ -600,6 +973,28 @@ SELECT
     properties.amount as purchase_amount
 FROM events
 WHERE event_type = 'page_view' AND properties.url = '/home';
+```
+
+**MooseStack - Correct (JSON type for dynamic properties):**
+
+```python
+from typing import Dict, Any, Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_default
+
+class Event(BaseModel):
+    event_id: Key[str]
+    event_type: Annotated[str, "LowCardinality"]
+    timestamp: Annotated[datetime, clickhouse_default("now()")]
+    properties: Dict[str, Any]  # Maps to JSON type in ClickHouse
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"]
+})
+
+# Query JSON paths directly in your SQL:
+# SELECT event_type, properties.url as page_url FROM events WHERE properties.url = '/home'
 ```
 
 **When to use JSON:**
@@ -648,6 +1043,16 @@ CREATE TABLE events (
 )
 ```
 
+**MooseStack - Incorrect (plain strings):**
+
+```python
+# Python - plain strings store each value repeatedly
+class Event(BaseModel):
+    country: str       # "United States" stored 500M times
+    browser: str       # "Chrome" stored 300M times
+    event_type: str    # "page_view" stored 800M times
+```
+
 **Correct: LowCardinality for low unique counts**
 
 ```sql
@@ -656,6 +1061,22 @@ CREATE TABLE events (
     browser LowCardinality(String),      -- ~50 unique values
     event_type LowCardinality(String)    -- ~100 unique values
 )
+```
+
+**MooseStack - Correct (LowCardinality annotation):**
+
+```python
+from typing import Annotated
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    country: Annotated[str, "LowCardinality"]      # LowCardinality(String) - ~200 unique values
+    browser: Annotated[str, "LowCardinality"]      # LowCardinality(String) - ~50 unique values
+    event_type: Annotated[str, "LowCardinality"]   # LowCardinality(String) - ~100 unique values
+
+events_table = OlapTable[Event]("events")
 ```
 
 **When to use LowCardinality:**
@@ -705,6 +1126,18 @@ CREATE TABLE events (
 )
 ```
 
+**MooseStack - Incorrect (strings for everything):**
+
+```python
+# Python - using strings loses type benefits
+class Event(BaseModel):
+    event_id: str       # String - 36 bytes for UUID
+    user_id: str        # String - no numeric operations
+    created_at: str     # String - 19 bytes, no date functions
+    count: str          # String - can't do math!
+    is_active: str      # String - 4 bytes for "true"
+```
+
 **Correct: native types**
 
 ```sql
@@ -716,6 +1149,46 @@ CREATE TABLE events (
     is_active Bool DEFAULT true                  -- 1 byte (vs 4)
 )
 ```
+
+**MooseStack - Correct (native types):**
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_default
+
+class Event(BaseModel):
+    event_id: Key[str]                                              # UUID - 16 bytes
+    user_id: Annotated[int, "uint64"]                               # UInt64 - 8 bytes, numeric ops
+    created_at: Annotated[datetime, clickhouse_default("now()")]    # DateTime - 4 bytes
+    count: Annotated[int, "uint32", clickhouse_default("0")]        # UInt32 - 4 bytes, math works
+    is_active: bool                                                 # Bool - 1 byte
+
+events_table = OlapTable[Event]("events")
+```
+
+**MooseStack Type Mapping:**
+
+| Data | TypeScript | Python |
+
+|------|------------|--------|
+
+| UUID | `Key<string>` or `string` | `Key[str]` or `str` |
+
+| Sequential ID | `UInt32` / `UInt64` | `Annotated[int, "uint32"]` |
+
+| Timestamps | `Date` | `datetime` |
+
+| Counts | `UInt8` / `UInt16` / `UInt32` | `Annotated[int, "uint8"]` etc. |
+
+| Money | `Decimal<P, S>` | `clickhouse_decimal(P, S)` |
+
+| Booleans | `boolean` | `bool` |
+
+| Enums | `enum Status { ... }` | `class Status(str, Enum)` |
+
+| Low cardinality | `string & LowCardinality` | `Annotated[str, "LowCardinality"]` |
 
 **Type Selection Quick Reference:**
 
@@ -768,6 +1241,16 @@ ORDER BY (timestamp);
 DELETE FROM events WHERE timestamp < '2023-01-01';
 ```
 
+**MooseStack - Incorrect (no time alignment):**
+
+```python
+# Python - partitioning by event_type makes time-based cleanup slow
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["timestamp"],
+    "partition_by_field": "event_type"  # Cannot efficiently drop old data by time
+})
+```
+
 **Correct: time-based for lifecycle**
 
 ```sql
@@ -785,6 +1268,26 @@ ALTER TABLE events DROP PARTITION '202301';
 
 -- Archive to cold storage
 ALTER TABLE events_archive ATTACH PARTITION '202301' FROM events;
+```
+
+**MooseStack - Correct (time-based partitioning with TTL):**
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    event_type: Annotated[str, "LowCardinality"]
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"],
+    "partition_by_field": "toStartOfMonth(timestamp)",  # Monthly partitions for easy lifecycle management
+    "ttl": "timestamp + INTERVAL 1 YEAR DELETE"         # Auto-drop partitions older than 1 year
+})
 ```
 
 Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
@@ -839,6 +1342,29 @@ SELECT * FROM table_a a JOIN table_b b ON b.pk_col = a.pk_col;
 ```
 
 **Note:** ClickHouse 24.12+ automatically positions smaller tables on the right side. For earlier versions, manually ensure the smaller table is on the RIGHT.
+
+**MooseStack - Apply JOIN algorithms in your queries:**
+
+```typescript
+import { Api } from "@514labs/moose-lib";
+
+const largeJoinApi = new Api<QueryParams, Result[]>(
+  "large-join",
+  async (params, { client }) => {
+    // Set algorithm for memory-constrained large joins
+    const query = `
+      SELECT * FROM large_a a
+      JOIN large_b b ON b.id = a.id
+      SETTINGS join_algorithm = 'partial_merge'
+    `;
+    return client.query(query);
+  }
+);
+```
+
+When writing SQL queries in MooseStack APIs or materialized views, you can specify JOIN algorithms:
+
+These JOIN optimization patterns apply to any ClickHouse query in your MooseStack application.
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
@@ -911,6 +1437,33 @@ JOIN customers c ON c.id = o.customer_id;
 
 **Critical dictionary caveat:** Dictionaries silently deduplicate duplicate keys, retaining only the final value. Only use when source has unique keys.
 
+**MooseStack - Denormalization with Materialized Views:**
+
+```typescript
+import { MaterializedView, OlapTable } from "@514labs/moose-lib";
+
+// Denormalized view that enriches orders with customer data at insert time
+export const ordersEnrichedMV = new MaterializedView({
+  name: "orders_enriched_mv",
+  source: ordersTable,
+  query: `
+    SELECT
+      o.order_id, o.customer_id,
+      c.name as customer_name,
+      c.email as customer_email,
+      o.total, o.created_at
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+  `,
+  orderByFields: ["createdAt", "orderId"]
+});
+
+// Query the pre-joined data (no JOIN at query time)
+// SELECT * FROM orders_enriched WHERE customer_name = 'John'
+```
+
+MooseStack supports materialized views for denormalization. Instead of repeated JOINs at query time, pre-join data at insert time:
+
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
 ### 2.3 Filter Tables Before Joining
@@ -959,6 +1512,34 @@ FROM (
 JOIN customers c ON c.id = o.customer_id;
 ```
 
+**MooseStack - Apply these patterns in your SQL queries:**
+
+```typescript
+import { Api } from "@514labs/moose-lib";
+
+const revenueByCountryApi = new Api<QueryParams, Result[]>(
+  "revenue-by-country",
+  async (params, { client }) => {
+    // ✅ Good: Filter and aggregate before joining
+    const query = `
+      SELECT c.country, o.total_revenue
+      FROM (
+        SELECT customer_id, sum(total) as total_revenue
+        FROM orders
+        WHERE created_at > {startDate: Date}
+        GROUP BY customer_id
+      ) o
+      JOIN customers c ON c.id = o.customer_id
+    `;
+    return client.query(query, { startDate: params.startDate });
+  }
+);
+```
+
+When writing SQL queries in MooseStack APIs or materialized views, apply these filtering patterns:
+
+These SQL optimization patterns apply to any ClickHouse query, whether in MooseStack APIs, materialized views, or direct queries.
+
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
 ### 2.4 Optimize NULL Handling in Outer JOINs
@@ -988,6 +1569,25 @@ LEFT JOIN customers c ON c.id = o.customer_id;
 | `join_use_nulls = 0` | Default values (empty string, 0) for non-matches | When you can handle default values |
 
 | `join_use_nulls = 1` (default) | NULL for non-matches | When you need to distinguish "no match" from "matched with default" |
+
+**MooseStack - Apply in SQL queries:**
+
+```typescript
+import { Api } from "@514labs/moose-lib";
+
+const ordersApi = new Api<QueryParams, Result[]>(
+  "orders",
+  async (params, { client }) => {
+    const query = `
+      SELECT o.order_id, c.name
+      FROM orders o
+      LEFT JOIN customers c ON c.id = o.customer_id
+      SETTINGS join_use_nulls = 0
+    `;
+    return client.query(query);
+  }
+);
+```
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
@@ -1026,6 +1626,28 @@ LEFT ANY JOIN customers c ON c.id = o.customer_id;
 | `INNER ANY JOIN` | At most one match, only matching rows |
 
 | `RIGHT ANY JOIN` | At most one match from left table |
+
+**MooseStack - Apply in SQL queries:**
+
+```typescript
+import { Api } from "@514labs/moose-lib";
+
+const ordersApi = new Api<QueryParams, Result[]>(
+  "orders",
+  async (params, { client }) => {
+    // Use ANY JOIN when you only need one match per row
+    const query = `
+      SELECT o.order_id, c.name
+      FROM orders o
+      LEFT ANY JOIN customers c ON c.id = o.customer_id
+      WHERE o.created_at > {startDate: Date}
+    `;
+    return client.query(query, { startDate: params.startDate });
+  }
+);
+```
+
+These SQL optimization patterns apply to any ClickHouse query in your MooseStack APIs and materialized views.
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
@@ -1110,6 +1732,27 @@ SELECT * FROM events WHERE user_id = 12345;
 -- Look for "Skip" in output showing granules skipped
 ```
 
+**MooseStack - Skipping indices in OlapTable:**
+
+```python
+from moose_lib import Key, OlapTable
+from typing import Annotated
+
+class Event(BaseModel):
+    id: Key[str]
+    event_type: Annotated[str, "LowCardinality"]
+    timestamp: datetime
+    user_id: Annotated[int, "uint64"]  # Frequently filtered but not in ORDER BY
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"],
+    # Add skipping index for non-ORDER BY filter column
+    "indexes": [
+        {"name": "idx_user_id", "column": "user_id", "type": "bloom_filter", "granularity": 4}
+    ]
+})
+```
+
 Reference: [https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate](https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate)
 
 ### 2.7 Use Incremental MVs for Real-Time Aggregations
@@ -1175,6 +1818,28 @@ GROUP BY event_type, hour;
 
 - Minimal cluster overhead at insert time
 
+**MooseStack - Incremental Materialized Views:**
+
+```python
+from moose_lib import Key, OlapTable, MaterializedView
+
+# Incremental MV that populates events_hourly from events
+events_hourly_mv = MaterializedView(
+    name="events_hourly_mv",
+    source=events_table,
+    destination=events_hourly_table,
+    query="""
+      SELECT
+        event_type,
+        toStartOfHour(timestamp) as hour,
+        countState() as events,
+        uniqState(user_id) as unique_users
+      FROM events
+      GROUP BY event_type, hour
+    """
+)
+```
+
 Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](https://clickhouse.com/docs/best-practices/use-materialized-views)
 
 ### 2.8 Use Refreshable MVs for Complex Joins and Batch Workflows
@@ -1239,6 +1904,32 @@ SELECT * FROM orders_denormalized WHERE segment = 'enterprise';
 | `APPEND` | Adds new rows to existing data | Periodic snapshots, historical accumulation |
 
 **Critical warning:** Query should run quickly compared to refresh interval. Don't schedule every 10 seconds if the query takes 10+ seconds.
+
+**MooseStack - Refreshable Materialized Views:**
+
+```python
+from moose_lib import MaterializedView
+
+# Denormalized view that refreshes every 5 minutes
+orders_denormalized_mv = MaterializedView(
+    name="orders_denormalized",
+    refresh_interval="5 MINUTE",  # Refresh every 5 minutes
+    query="""
+      SELECT
+        o.order_id, o.created_at, o.total,
+        c.name as customer_name, c.segment,
+        p.name as product_name
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      JOIN products p ON o.product_id = p.id
+      WHERE o.created_at >= now() - INTERVAL 1 DAY
+    """,
+    order_by_fields=["created_at", "order_id"]
+)
+
+# Query the pre-joined data (sub-millisecond)
+# SELECT * FROM orders_denormalized WHERE segment = 'enterprise'
+```
 
 Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](https://clickhouse.com/docs/best-practices/use-materialized-views)
 
@@ -1321,6 +2012,43 @@ ALTER TABLE events DELETE WHERE toYYYYMM(timestamp) = 202301;
 
 | DROP PARTITION | Instant | Bulk deletion by partition |
 
+**MooseStack - CollapsingMergeTree for soft deletes:**
+
+```python
+from typing import Annotated
+from decimal import Decimal
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_decimal
+
+class Order(BaseModel):
+    order_id: Key[int]
+    customer_id: Annotated[int, "uint64"]
+    total: clickhouse_decimal(10, 2)
+    sign: Annotated[int, "int8"]  # 1 = active, -1 = deleted
+
+# Use CollapsingMergeTree engine for soft delete patterns
+orders_table = OlapTable[Order]("orders", {
+    "order_by_fields": ["order_id"],
+    "engine": "CollapsingMergeTree(sign)"
+})
+
+# Insert order (sign = 1)
+await orders_table.insert([Order(order_id=123, customer_id=456, total=Decimal("99.99"), sign=1)])
+
+# "Delete" order by inserting with sign = -1
+await orders_table.insert([Order(order_id=123, customer_id=456, total=Decimal("99.99"), sign=-1)])
+```
+
+**MooseStack - TTL for automatic data lifecycle:**
+
+```typescript
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventType", "timestamp"],
+  partitionByField: "toStartOfMonth(timestamp)",
+  ttl: "timestamp + INTERVAL 90 DAY DELETE"  // Auto-delete old data
+});
+```
+
 Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
 
 ### 3.2 Avoid ALTER TABLE UPDATE
@@ -1375,6 +2103,32 @@ SELECT * FROM users FINAL WHERE user_id = 123;
 -- Or use aggregation
 SELECT user_id, argMax(status, updated_at) as status
 FROM users GROUP BY user_id;
+```
+
+**MooseStack - ReplacingMergeTree for updates:**
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_default
+
+class User(BaseModel):
+    user_id: Key[int]
+    name: str
+    status: Annotated[str, "LowCardinality"]
+    updated_at: Annotated[datetime, clickhouse_default("now()")]
+
+# Use ReplacingMergeTree engine for update patterns
+users_table = OlapTable[User]("users", {
+    "order_by_fields": ["user_id"],
+    "engine": "ReplacingMergeTree(updated_at)"  # Version column for deduplication
+})
+
+# "Update" by inserting a new version
+await users_table.insert([User(user_id=123, name="John", status="inactive")])
+
+# Query with FINAL or aggregation to get latest version
 ```
 
 Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
@@ -1438,6 +2192,26 @@ SELECT * FROM events FINAL WHERE user_id = 123;
 
 | Reduce part count | Rely on background merges |
 
+**MooseStack - Query with FINAL for deduplication:**
+
+```python
+from moose_lib import OlapTable
+
+users_table = OlapTable[User]("users", {
+    "order_by_fields": ["user_id"],
+    "engine": "ReplacingMergeTree(updated_at)"
+})
+
+# ✅ Good: Use FINAL in queries to get deduplicated results
+query = "SELECT * FROM users FINAL WHERE user_id = {userId:UInt64}"
+result = await users_table.client.query(query, {"userId": 123})
+
+# ❌ Bad: Don't run OPTIMIZE TABLE FINAL
+# await client.execute("OPTIMIZE TABLE users FINAL")  # Expensive and unnecessary!
+```
+
+When using ReplacingMergeTree in MooseStack, use the `FINAL` modifier in your SELECT queries rather than running `OPTIMIZE TABLE FINAL`:
+
 Reference: [https://clickhouse.com/docs/best-practices/avoid-optimize-final](https://clickhouse.com/docs/best-practices/avoid-optimize-final)
 
 ### 3.4 Batch Inserts Appropriately (10K-100K rows)
@@ -1466,6 +2240,40 @@ BATCH_SIZE = 10_000
 for batch in chunks(events, BATCH_SIZE):
     client.execute("INSERT INTO events VALUES", batch)
 ```
+
+**MooseStack - Batching handled automatically:**
+
+```typescript
+import { IngestPipeline } from "@514labs/moose-lib";
+
+// IngestPipeline uses Kafka - batching is automatic
+const pipeline = new IngestPipeline<Event>("events", {
+  ingestApi: true,   // HTTP API accepts individual events
+  stream: true,      // Kafka buffers events
+  table: true        // Sink writes batches to ClickHouse
+});
+// Individual API calls are buffered via Kafka and inserted in efficient batches
+```
+
+When using MooseStack's IngestPipeline with Kafka streaming, batching is handled automatically - Kafka buffers messages and the sink writes in efficient batches.
+
+**MooseStack - Direct bulk inserts:**
+
+```python
+from moose_lib import OlapTable
+
+events_table = OlapTable[Event]("events")
+
+# ✅ Good: Bulk insert with proper batch size
+events: list[Event] = [...]  # 10,000+ rows
+await events_table.insert(events)
+
+# ❌ Bad: Single row inserts in a loop
+for event in events:
+    await events_table.insert([event])  # Creates a part per insert!
+```
+
+When using direct OlapTable inserts, batch your data appropriately:
 
 **Recommended batch sizes:**
 
@@ -1525,6 +2333,34 @@ ALTER USER my_app_user SETTINGS
 
 - Maximum insert queries accumulate
 
+**MooseStack - Stream-based buffering (preferred):**
+
+```python
+from moose_lib import IngestPipeline, IngestPipelineConfig
+
+# Kafka provides buffering for high-frequency small events
+pipeline = IngestPipeline[Event]("events", IngestPipelineConfig(
+    ingest_api=True,   # Accept individual events via API
+    stream=True,       # Kafka buffers and batches
+    table=True         # Efficient bulk writes to ClickHouse
+))
+# Each API call is buffered via Kafka - no async_insert needed
+```
+
+MooseStack's IngestPipeline and Streams provide built-in buffering via Kafka, which is typically more robust than async inserts:
+
+**When to use async_insert vs MooseStack streams:**
+
+| Scenario | Recommendation |
+
+|----------|----------------|
+
+| High-frequency events from API | Use IngestPipeline with Kafka |
+
+| Direct ClickHouse client inserts | Enable async_insert |
+
+| Bulk ETL loads | Use OlapTable.insert() with proper batching |
+
 **Return modes:**
 
 | Setting | Behavior | Use Case |
@@ -1562,11 +2398,27 @@ Data format affects insert performance. Native format is column-oriented with mi
 client.execute("INSERT INTO events VALUES", data, settings={'input_format': 'Native'})
 ```
 
+**MooseStack - Format handled automatically:**
+
+```python
+from moose_lib import OlapTable
+
+events_table = OlapTable[Event]("events")
+
+# MooseStack handles format optimization internally
+await events_table.insert(events)  # Uses efficient format automatically
+```
+
+MooseStack automatically optimizes the insert format when using `OlapTable.insert()`. You don't need to specify the format explicitly.
+
+When using IngestPipeline, data flows through Kafka and is efficiently batched and inserted by the sink.
+
 Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
 
 ---
 
 ## References
 
-1. [https://clickhouse.com/docs](https://clickhouse.com/docs)
-2. [https://github.com/ClickHouse/ClickHouse](https://github.com/ClickHouse/ClickHouse)
+1. [https://docs.fiveonefour.com/moosestack](https://docs.fiveonefour.com/moosestack)
+2. [https://clickhouse.com/docs](https://clickhouse.com/docs)
+3. [https://github.com/ClickHouse/ClickHouse](https://github.com/ClickHouse/ClickHouse)

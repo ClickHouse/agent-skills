@@ -28,6 +28,24 @@ ORDER BY (timestamp);
 DELETE FROM events WHERE timestamp < '2023-01-01';
 ```
 
+**MooseStack - Incorrect (no time alignment):**
+
+```typescript
+// TypeScript - partitioning by eventType makes time-based cleanup slow
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["timestamp"],
+  partitionByField: "eventType"  // Cannot efficiently drop old data by time
+});
+```
+
+```python
+# Python - partitioning by event_type makes time-based cleanup slow
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["timestamp"],
+    "partition_by_field": "event_type"  # Cannot efficiently drop old data by time
+})
+```
+
 **Correct (time-based for lifecycle):**
 
 ```sql
@@ -45,6 +63,42 @@ ALTER TABLE events DROP PARTITION '202301';
 
 -- Archive to cold storage
 ALTER TABLE events_archive ATTACH PARTITION '202301' FROM events;
+```
+
+**MooseStack - Correct (time-based partitioning with TTL):**
+
+```typescript
+import { Key, LowCardinality, OlapTable } from "@514labs/moose-lib";
+
+interface Event {
+  id: Key<string>;
+  timestamp: Date;
+  eventType: string & LowCardinality;
+}
+
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventType", "timestamp"],
+  partitionByField: "toStartOfMonth(timestamp)",  // Monthly partitions for easy lifecycle management
+  ttl: "timestamp + INTERVAL 1 YEAR DELETE"       // Auto-drop partitions older than 1 year
+});
+```
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    event_type: Annotated[str, "LowCardinality"]
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"],
+    "partition_by_field": "toStartOfMonth(timestamp)",  # Monthly partitions for easy lifecycle management
+    "ttl": "timestamp + INTERVAL 1 YEAR DELETE"         # Auto-drop partitions older than 1 year
+})
 ```
 
 Reference: [Choosing a Partitioning Key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)

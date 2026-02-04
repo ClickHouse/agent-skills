@@ -21,6 +21,22 @@ ORDER BY (event_id, event_type, timestamp);
 -- Every granule has different event_id values, index can't skip anything
 ```
 
+**MooseStack - Incorrect (high cardinality first):**
+
+```typescript
+// TypeScript - UUID first means no pruning benefit
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventId", "eventType", "timestamp"]  // High cardinality first - bad!
+});
+```
+
+```python
+# Python - UUID first means no pruning benefit
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_id", "event_type", "timestamp"]  # High cardinality first - bad!
+})
+```
+
 **Correct (low cardinality first):**
 
 ```sql
@@ -29,6 +45,42 @@ CREATE TABLE events (...)
 ENGINE = MergeTree()
 ORDER BY (event_type, event_date, event_id);
 -- Index can skip entire event_type groups
+```
+
+**MooseStack - Correct (low cardinality first):**
+
+```typescript
+import { Key, LowCardinality, OlapTable } from "@514labs/moose-lib";
+
+interface Event {
+  eventId: Key<string>;
+  eventType: string & LowCardinality;   // Low cardinality
+  eventDate: Date;                       // Date granularity
+  timestamp: Date;
+}
+
+// Low cardinality first enables pruning
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventType", "eventDate", "eventId"]  // Low → High cardinality
+});
+```
+
+```python
+from typing import Annotated
+from datetime import date, datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    event_id: Key[str]
+    event_type: Annotated[str, "LowCardinality"]   # Low cardinality
+    event_date: date                               # Date granularity
+    timestamp: datetime
+
+# Low cardinality first enables pruning
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "event_date", "event_id"]  # Low → High cardinality
+})
 ```
 
 **Column Order Guidelines:**

@@ -27,6 +27,34 @@ PARTITION BY toDate(timestamp)  -- 3650 partitions over 10 years
 ORDER BY (service, timestamp);
 ```
 
+**MooseStack - Incorrect (high cardinality partitioning):**
+
+```typescript
+// TypeScript - high cardinality partitioning causes "too many parts" errors
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["timestamp"],
+  partitionByField: "userId"  // Millions of partitions - BAD!
+});
+
+export const logsTable = new OlapTable<Log>("logs", {
+  orderByFields: ["service", "timestamp"],
+  partitionByField: "toDate(timestamp)"  // 3650 partitions over 10 years - risky!
+});
+```
+
+```python
+# Python - high cardinality partitioning causes "too many parts" errors
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["timestamp"],
+    "partition_by_field": "user_id"  # Millions of partitions - BAD!
+})
+
+logs_table = OlapTable[Log]("logs", {
+    "order_by_fields": ["service", "timestamp"],
+    "partition_by_field": "toDate(timestamp)"  # 3650 partitions over 10 years - risky!
+})
+```
+
 **Correct (bounded cardinality):**
 
 ```sql
@@ -39,6 +67,44 @@ CREATE TABLE events (
 ENGINE = MergeTree()
 PARTITION BY toStartOfMonth(timestamp)
 ORDER BY (event_type, timestamp);
+```
+
+**MooseStack - Correct (bounded cardinality):**
+
+```typescript
+import { Key, LowCardinality, UInt64, OlapTable } from "@514labs/moose-lib";
+
+interface Event {
+  id: Key<string>;
+  timestamp: Date;
+  eventType: string & LowCardinality;
+  userId: UInt64;
+}
+
+// Monthly partitions = 12 per year, bounded cardinality
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["eventType", "timestamp"],
+  partitionByField: "toStartOfMonth(timestamp)"  // 12 partitions per year - GOOD!
+});
+```
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+
+class Event(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    event_type: Annotated[str, "LowCardinality"]
+    user_id: Annotated[int, "uint64"]
+
+# Monthly partitions = 12 per year, bounded cardinality
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["event_type", "timestamp"],
+    "partition_by_field": "toStartOfMonth(timestamp)"  # 12 partitions per year - GOOD!
+})
 ```
 
 **Validation:**

@@ -23,6 +23,42 @@ SELECT * FROM events WHERE event_type = 'click';
 SELECT * FROM events WHERE user_agent LIKE '%Chrome%';
 ```
 
+**MooseStack - Schema & Query Example:**
+
+```typescript
+import { Key, LowCardinality, OlapTable } from "@514labs/moose-lib";
+
+interface Event {
+  id: Key<string>;
+  tenantId: number;
+  eventType: string & LowCardinality;
+  timestamp: Date;
+  userAgent: string;  // Not in orderByFields
+}
+
+export const eventsTable = new OlapTable<Event>("events", {
+  orderByFields: ["tenantId", "eventType", "timestamp"]  // Define ordering
+});
+```
+
+```python
+from moose_lib import Key, OlapTable
+from typing import Annotated
+
+class Event(BaseModel):
+    id: Key[str]
+    tenant_id: int
+    event_type: Annotated[str, "LowCardinality"]
+    timestamp: datetime
+    user_agent: str  # Not in order_by_fields
+
+events_table = OlapTable[Event]("events", {
+    "order_by_fields": ["tenant_id", "event_type", "timestamp"]  # Define ordering
+})
+```
+
+**Important:** MooseStack generates the ClickHouse schema, but you must still write queries that use the ORDER BY columns to benefit from the index.
+
 **Correct (uses ORDER BY prefix):**
 
 ```sql

@@ -55,4 +55,52 @@ SELECT user_id, argMax(status, updated_at) as status
 FROM users GROUP BY user_id;
 ```
 
+**MooseStack - ReplacingMergeTree for updates:**
+
+```typescript
+import { Key, LowCardinality, UInt64, OlapTable, ClickHouseDefault } from "@514labs/moose-lib";
+
+interface User {
+  userId: Key<UInt64>;
+  name: string;
+  status: string & LowCardinality;
+  updatedAt: Date & ClickHouseDefault<"now()">;
+}
+
+// Use ReplacingMergeTree engine for update patterns
+export const usersTable = new OlapTable<User>("users", {
+  orderByFields: ["userId"],
+  engine: "ReplacingMergeTree(updatedAt)"  // Version column for deduplication
+});
+
+// "Update" by inserting a new version
+await usersTable.insert([{ userId: 123, name: "John", status: "inactive" }]);
+
+// Query with FINAL or aggregation to get latest version
+```
+
+```python
+from typing import Annotated
+from datetime import datetime
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable, clickhouse_default
+
+class User(BaseModel):
+    user_id: Key[int]
+    name: str
+    status: Annotated[str, "LowCardinality"]
+    updated_at: Annotated[datetime, clickhouse_default("now()")]
+
+# Use ReplacingMergeTree engine for update patterns
+users_table = OlapTable[User]("users", {
+    "order_by_fields": ["user_id"],
+    "engine": "ReplacingMergeTree(updated_at)"  # Version column for deduplication
+})
+
+# "Update" by inserting a new version
+await users_table.insert([User(user_id=123, name="John", status="inactive")])
+
+# Query with FINAL or aggregation to get latest version
+```
+
 Reference: [Avoid Mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)

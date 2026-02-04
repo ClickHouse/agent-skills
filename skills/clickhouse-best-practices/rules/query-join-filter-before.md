@@ -51,4 +51,32 @@ FROM (
 JOIN customers c ON c.id = o.customer_id;
 ```
 
+**MooseStack - Apply these patterns in your SQL queries:**
+
+When writing SQL queries in MooseStack APIs or materialized views, apply these filtering patterns:
+
+```typescript
+import { Api } from "@514labs/moose-lib";
+
+const revenueByCountryApi = new Api<QueryParams, Result[]>(
+  "revenue-by-country",
+  async (params, { client }) => {
+    // ✅ Good: Filter and aggregate before joining
+    const query = `
+      SELECT c.country, o.total_revenue
+      FROM (
+        SELECT customer_id, sum(total) as total_revenue
+        FROM orders
+        WHERE created_at > {startDate: Date}
+        GROUP BY customer_id
+      ) o
+      JOIN customers c ON c.id = o.customer_id
+    `;
+    return client.query(query, { startDate: params.startDate });
+  }
+);
+```
+
+These SQL optimization patterns apply to any ClickHouse query, whether in MooseStack APIs, materialized views, or direct queries.
+
 Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
