@@ -61,10 +61,11 @@ CREATE TABLE events (
 **MooseStack - Correct (native types):**
 
 ```typescript
-import { Key, UInt32, UInt64, ClickHouseDefault, OlapTable } from "@514labs/moose-lib";
+import { UInt32, UInt64, ClickHouseDefault, OlapTable } from "@514labs/moose-lib";
+import { tags } from "typia";
 
 interface Event {
-  eventId: Key<string>;                                    // UUID - 16 bytes
+  eventId: string & tags.Format<"uuid">;                   // UUID - 16 bytes native storage
   userId: UInt64;                                          // UInt64 - 8 bytes, numeric ops
   createdAt: Date & ClickHouseDefault<"now()">;            // DateTime - 4 bytes
   count: UInt32 & ClickHouseDefault<"0">;                  // UInt32 - 4 bytes, math works
@@ -77,11 +78,12 @@ export const eventsTable = new OlapTable<Event>("events");
 ```python
 from typing import Annotated
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel
-from moose_lib import Key, OlapTable, clickhouse_default
+from moose_lib import OlapTable, clickhouse_default
 
 class Event(BaseModel):
-    event_id: Key[str]                                              # UUID - 16 bytes
+    event_id: UUID                                                  # UUID - 16 bytes native storage
     user_id: Annotated[int, "uint64"]                               # UInt64 - 8 bytes, numeric ops
     created_at: Annotated[datetime, clickhouse_default("now()")]    # DateTime - 4 bytes
     count: Annotated[int, "uint32", clickhouse_default("0")]        # UInt32 - 4 bytes, math works
@@ -94,7 +96,7 @@ events_table = OlapTable[Event]("events")
 
 | Data | TypeScript | Python |
 |------|------------|--------|
-| UUID | `Key<string>` or `string` | `Key[str]` or `str` |
+| UUID | `string & tags.Format<"uuid">` (typia) | `UUID` (from uuid) |
 | Sequential ID | `UInt32` / `UInt64` | `Annotated[int, "uint32"]` |
 | Timestamps | `Date` | `datetime` |
 | Counts | `UInt8` / `UInt16` / `UInt32` | `Annotated[int, "uint8"]` etc. |

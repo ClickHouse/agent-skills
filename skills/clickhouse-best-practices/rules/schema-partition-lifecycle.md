@@ -42,7 +42,7 @@ export const eventsTable = new OlapTable<Event>("events", {
 # Python - partitioning by event_type makes time-based cleanup slow
 events_table = OlapTable[Event]("events", {
     "order_by_fields": ["timestamp"],
-    "partition_by_field": "event_type"  # Cannot efficiently drop old data by time
+    "partition_by": "event_type"  # Cannot efficiently drop old data by time
 })
 ```
 
@@ -96,7 +96,7 @@ class Event(BaseModel):
 
 events_table = OlapTable[Event]("events", {
     "order_by_fields": ["event_type", "timestamp"],
-    "partition_by_field": "toStartOfMonth(timestamp)",  # Monthly partitions for easy lifecycle management
+    "partition_by": "toStartOfMonth(timestamp)",  # Monthly partitions for easy lifecycle management
     "ttl": "timestamp + INTERVAL 1 YEAR DELETE"         # Auto-drop partitions older than 1 year
 })
 ```

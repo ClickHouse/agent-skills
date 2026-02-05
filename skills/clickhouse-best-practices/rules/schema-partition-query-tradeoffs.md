@@ -65,7 +65,7 @@ class Event(BaseModel):
 # Define table with time-based partitioning
 events_table = OlapTable[Event]("events", {
     "order_by_fields": ["event_type", "timestamp"],
-    "partition_by_field": "toStartOfMonth(timestamp)"
+    "partition_by": "toStartOfMonth(timestamp)"
 })
 
 # Queries with timestamp filters will benefit from partition pruning

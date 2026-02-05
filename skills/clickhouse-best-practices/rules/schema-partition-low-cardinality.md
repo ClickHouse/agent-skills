@@ -46,12 +46,12 @@ export const logsTable = new OlapTable<Log>("logs", {
 # Python - high cardinality partitioning causes "too many parts" errors
 events_table = OlapTable[Event]("events", {
     "order_by_fields": ["timestamp"],
-    "partition_by_field": "user_id"  # Millions of partitions - BAD!
+    "partition_by": "user_id"  # Millions of partitions - BAD!
 })
 
 logs_table = OlapTable[Log]("logs", {
     "order_by_fields": ["service", "timestamp"],
-    "partition_by_field": "toDate(timestamp)"  # 3650 partitions over 10 years - risky!
+    "partition_by": "toDate(timestamp)"  # 3650 partitions over 10 years - risky!
 })
 ```
 
@@ -103,7 +103,7 @@ class Event(BaseModel):
 # Monthly partitions = 12 per year, bounded cardinality
 events_table = OlapTable[Event]("events", {
     "order_by_fields": ["event_type", "timestamp"],
-    "partition_by_field": "toStartOfMonth(timestamp)"  # 12 partitions per year - GOOD!
+    "partition_by": "toStartOfMonth(timestamp)"  # 12 partitions per year - GOOD!
 })
 ```
 

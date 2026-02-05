@@ -64,7 +64,7 @@ class Event(BaseModel):
 # Start simple - no partitioning
 events_table = OlapTable[Event]("events", {
     "order_by_fields": ["event_type", "timestamp"]
-    # No partition_by_field - add later if needed for lifecycle management
+    # No partition_by - add later if needed for lifecycle management
 })
 ```
 

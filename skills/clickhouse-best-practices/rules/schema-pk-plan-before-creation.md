@@ -133,7 +133,7 @@ class Event(BaseModel):
 
 events_table = OlapTable[Event]("events", {
     "order_by_fields": ["user_id", "event_date", "event_id"],  # Matches query patterns
-    "partition_by_field": "toYYYYMM(event_date)"
+    "partition_by": "toYYYYMM(event_date)"
 })
 ```
 
