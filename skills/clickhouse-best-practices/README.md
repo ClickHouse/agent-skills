@@ -5,7 +5,7 @@ Agent skill providing comprehensive ClickHouse guidance for schema design, query
 ## Installation
 
 ```bash
-npx add-skill ClickHouse/clickhouse-agent-skills
+npx skills add ClickHouse/clickhouse-agent-skills
 ```
 
 ## What's Included
