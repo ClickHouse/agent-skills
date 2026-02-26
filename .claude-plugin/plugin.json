@@ -1,0 +1,12 @@
+{
+  "name": "clickhouse",
+  "description": "ClickHouse Claude Code plugin: skills (ClickHouse best practices), rules and MCP.",
+  "version": "1.0.0",
+  "author": {
+    "name": "ClickHouse",
+    "email": "ai@clickhouse.com"
+  },
+  "repository": "https://github.com/ClickHouse/agent-skills",
+  "license": "Apache-2.0",
+  "keywords": ["database", "clickhouse", "skills", "mcp", "analytics"]
+}
