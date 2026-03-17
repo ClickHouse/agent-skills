@@ -57,7 +57,8 @@ def check_sort():
     ds = DataStore({"name": ["Charlie", "Alice", "Bob"], "value": [3, 1, 2]})
     sorted_ds = ds.sort_values("value")
     cols = sorted_ds.columns
-    assert "name" in cols and "value" in cols, f"Unexpected columns: {cols}"
+    assert "name" in cols and "value" in cols, f"Missing expected columns: {cols}"
+    assert list(sorted_ds["value"]) == [1, 2, 3], f"Expected sorted values [1, 2, 3], got {list(sorted_ds['value'])}"
 
 
 def check_groupby():

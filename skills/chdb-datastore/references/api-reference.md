@@ -55,7 +55,7 @@ See [connectors.md](connectors.md) for all factory methods (`from_file`, `from_m
 | `ds[condition]` | DataStore | Boolean filter (e.g., `ds[ds['age'] > 25]`) |
 | `.select(*fields)` | DataStore | SQL-style SELECT with expressions |
 | `.filter(condition)` | DataStore | SQL-style WHERE clause |
-| `.where(condition)` | DataStore | Alias for `.filter()` |
+| `.where(condition)` | DataStore | Mask values where condition is False (pandas semantics) |
 
 ```python
 result = ds[ds["age"] > 25]
@@ -63,6 +63,7 @@ result = ds[(ds["status"] == "active") & (ds["revenue"] > 1000)]
 result = ds[["name", "city", "revenue"]]
 result = ds.select("name", "revenue * 1.1 AS adjusted_revenue")
 result = ds.filter(ds["country"] == "US")
+result = ds.where(ds["age"] > 25)  # keeps all rows; non-matching values become NaN
 ```
 
 ---
