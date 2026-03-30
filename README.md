@@ -6,11 +6,20 @@ You can use these skills with open-source ClickHouse and managed ClickHouse Clou
 
 ## Installation
 
+### npx
+
 ```bash
 npx skills add clickhouse/agent-skills
 ```
-
 The CLI auto-detects installed agents and prompts you to select where to install.
+
+### clickhousectl
+
+Use the ClickHouse CLI [`clickhousectl`](https://github.com/ClickHouse/clickhousectl) to install the agent skills:
+
+```bash
+clickhousectl skills
+```
 
 ## What is this?
 
