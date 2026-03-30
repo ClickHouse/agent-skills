@@ -1,0 +1,10 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "March 2026",
+  "abstract": "Step-by-step workflow for setting up a local ClickHouse development environment using clickhousectl. Covers installing the CLI, installing ClickHouse, initializing a project, starting a server, creating schemas, seeding data, and verifying the setup.",
+  "references": [
+    "https://clickhouse.com/docs",
+    "https://github.com/ClickHouse/clickhousectl"
+  ]
+}
