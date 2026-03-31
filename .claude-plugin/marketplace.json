@@ -1,0 +1,32 @@
+{
+  "name": "clickhouse-agent-skills",
+  "owner": {
+    "name": "ClickHouse"
+  },
+  "metadata": {
+    "description": "Official ClickHouse best practices for Claude Code",
+    "version": "0.3.0"
+  },
+  "plugins": [
+    {
+      "name": "clickhouse-best-practices",
+      "source": "./",
+      "description": "28 best practice rules for ClickHouse schema design, query optimization, and data ingestion — prioritized by impact",
+      "version": "0.3.0",
+      "author": {
+        "name": "ClickHouse Inc"
+      },
+      "homepage": "https://clickhouse.ai",
+      "repository": "https://github.com/ClickHouse/agent-skills",
+      "license": "Apache-2.0",
+      "keywords": [
+        "clickhouse",
+        "database",
+        "query-optimization",
+        "schema-design",
+        "best-practices"
+      ],
+      "category": "database"
+    }
+  ]
+}
