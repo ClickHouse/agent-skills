@@ -33,7 +33,7 @@ which clickhousectl
 If not found, install it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ClickHouse/clickhousectl/main/install.sh | sh
+curl -fsSL https://clickhouse.com/cli | sh
 ```
 
 This installs `clickhousectl` to `~/.local/bin/clickhousectl` and creates a `chctl` alias.

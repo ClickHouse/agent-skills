@@ -51,7 +51,7 @@ which clickhousectl
 If not found, install it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ClickHouse/clickhousectl/main/install.sh | sh
+curl -fsSL https://clickhouse.com/cli | sh
 ```
 
 Now authenticate. There are three options — choose based on the situation:
