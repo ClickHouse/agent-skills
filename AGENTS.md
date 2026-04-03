@@ -4,22 +4,45 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for AI agents working with ClickHouse databases. Skills are packaged instructions and guidelines that extend agent capabilities for database design, query optimization, and operational best practices.
+A collection of skills for AI agents working with ClickHouse databases and chdb (in-process ClickHouse for Python). Skills are packaged instructions and guidelines that extend agent capabilities for database design, query optimization, operational best practices, and in-process data analytics.
 
 ## Repository Structure
 
 ```
 agent-skills/
 ├── skills/
-│   └── clickhouse-best-practices/   # ClickHouse optimization guidelines
-│       ├── SKILL.md                 # Skill definition (overview)
-│       ├── AGENTS.md                # Full compiled guide (generated)
+│   ├── clickhouse-best-practices/   # ClickHouse optimization guidelines
+│   │   ├── SKILL.md                 # Skill definition (overview)
+│   │   ├── AGENTS.md                # Full compiled guide (generated)
+│   │   ├── metadata.json            # Version, organization, abstract
+│   │   ├── README.md                # Maintainer guide
+│   │   └── rules/                   # Individual rule files
+│   │       ├── _sections.md         # Section metadata
+│   │       ├── _template.md         # Template for new rules
+│   │       └── *.md                 # Rule files (e.g., query-use-prewhere.md)
+│   ├── chdb-datastore/              # chdb pandas-compatible DataStore API
+│   │   ├── SKILL.md                 # Skill definition and quick-start
+│   │   ├── metadata.json            # Version, organization, abstract
+│   │   ├── README.md                # Maintainer guide
+│   │   ├── references/              # API reference docs
+│   │   │   ├── api-reference.md     # DataStore method signatures
+│   │   │   └── connectors.md        # All data source connection methods
+│   │   ├── examples/
+│   │   │   └── examples.md          # Runnable examples
+│   │   └── scripts/
+│   │       └── verify_install.py    # Environment verification
+│   └── chdb-sql/                    # chdb SQL API
+│       ├── SKILL.md                 # Skill definition and quick-start
 │       ├── metadata.json            # Version, organization, abstract
 │       ├── README.md                # Maintainer guide
-│       └── rules/                   # Individual rule files
-│           ├── _sections.md         # Section metadata
-│           ├── _template.md         # Template for new rules
-│           └── *.md                 # Rule files (e.g., query-use-prewhere.md)
+│       ├── references/              # SQL reference docs
+│       │   ├── api-reference.md     # query/Session/connect signatures
+│       │   ├── table-functions.md   # ClickHouse table functions
+│       │   └── sql-functions.md     # Commonly used SQL functions
+│       ├── examples/
+│       │   └── examples.md          # Runnable examples
+│       └── scripts/
+│           └── verify_install.py    # Environment verification
 ├── packages/
 │   └── clickhouse-best-practices-build/  # Build tooling
 │       ├── package.json             # Bun scripts

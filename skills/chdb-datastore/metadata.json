@@ -1,0 +1,10 @@
+{
+  "version": "4.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "March 2026",
+  "abstract": "Pandas-compatible DataStore API for chdb. Drop-in pandas replacement backed by ClickHouse: same API, 10-100x faster. Supports 16+ data sources (MySQL, PostgreSQL, S3, ClickHouse, MongoDB, Iceberg, Delta Lake, etc.) and 10+ file formats with cross-source joins.",
+  "references": [
+    "https://clickhouse.com/docs/chdb",
+    "https://github.com/chdb-io/chdb"
+  ]
+}

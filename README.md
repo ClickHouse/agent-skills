@@ -1,6 +1,6 @@
 # ClickHouse Agent Skills
 
-The official Agent Skills for [ClickHouse](https://clickhouse.com/). These skills help LLMs and agents to adopt best practices when working with ClickHouse.
+The official Agent Skills for [ClickHouse](https://clickhouse.com/). These skills help LLMs and agents to adopt best practices when working with ClickHouse and [chdb](https://clickhouse.com/docs/chdb) (in-process ClickHouse for Python).
 
 You can use these skills with open-source ClickHouse and managed ClickHouse Cloud. [Try ClickHouse Cloud with $300 in free credits](https://clickhouse.com/cloud?utm_medium=github&utm_source=github&utm_ref=agent-skills).
 
@@ -14,9 +14,9 @@ The CLI auto-detects installed agents and prompts you to select where to install
 
 ## What is this?
 
-Agent Skills are packaged instructions that extend AI coding agents (Claude Code, Cursor, Copilot, etc.) with domain-specific expertise. This repository provides skills for ClickHouse databases—covering schema design, query optimization, and data ingestion patterns.
+Agent Skills are packaged instructions that extend AI coding agents (Claude Code, Cursor, Copilot, etc.) with domain-specific expertise. This repository provides skills for ClickHouse databases and chdb — covering schema design, query optimization, data ingestion patterns, and in-process analytics with Python.
 
-When an agent loads these skills, it gains knowledge of ClickHouse best practices and can apply them while helping you design tables, write queries, or troubleshoot performance issues.
+When an agent loads these skills, it gains knowledge of ClickHouse best practices and chdb APIs, and can apply them while helping you design tables, write queries, analyze data, or troubleshoot performance issues.
 
 Skills follow the open specification at [agentskills.io](https://agentskills.io).
 
@@ -46,9 +46,25 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 
 **For agents:** The skill activates automatically when you work with ClickHouse—creating tables, writing queries, or designing data pipelines.
 
+### chdb DataStore
+
+**Pandas-compatible API** for chdb — drop-in pandas replacement backed by ClickHouse. Write `import chdb.datastore as pd` and use the same pandas API, 10-100x faster. Supports 16+ data sources (MySQL, PostgreSQL, S3, MongoDB, Iceberg, Delta Lake, etc.) with cross-source joins.
+
+**Location:** [`skills/chdb-datastore/`](./skills/chdb-datastore/)
+
+**For agents:** The skill activates when you analyze data with pandas-style syntax, speed up slow pandas code, query remote databases as DataFrames, or join data across different sources.
+
+### chdb SQL
+
+**In-process ClickHouse SQL** for Python — run SQL queries on local files, remote databases, and cloud storage without a server. Covers `chdb.query()`, Session, DB-API 2.0, parametrized queries, UDFs, streaming, and all ClickHouse table functions.
+
+**Location:** [`skills/chdb-sql/`](./skills/chdb-sql/)
+
+**For agents:** The skill activates when you write SQL queries against files, use ClickHouse table functions, build stateful analytical pipelines, or use advanced ClickHouse SQL features.
+
 ## Quick Start
 
-After installation, your AI agent will reference these best practices when:
+After installation, your AI agent will reference these skills when:
 
 - Creating new tables with `CREATE TABLE`
 - Choosing `ORDER BY` / `PRIMARY KEY` columns
@@ -57,11 +73,22 @@ After installation, your AI agent will reference these best practices when:
 - Writing or tuning JOINs
 - Designing data ingestion pipelines
 - Handling updates or deletes
+- Analyzing data with pandas-style DataStore API
+- Querying files or databases with chdb SQL
+- Joining data across different sources (MySQL + S3 + local files)
 
-Example prompt:
+Example prompts:
 > "Create a table for storing user events with fields for user_id, event_type, properties (JSON), and timestamp"
 
-The agent will apply relevant rules like proper column ordering in the primary key, appropriate data types, and partitioning strategy.
+The agent will apply relevant ClickHouse best practices rules.
+
+> "Load this Parquet file and group by country, show top 10 by revenue"
+
+The agent will use chdb DataStore or SQL to query the file directly.
+
+> "Join my MySQL customers table with this local orders.parquet file"
+
+The agent will use chdb's cross-source join capabilities.
 
 ## Supported Agents
 
