@@ -46,6 +46,26 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 
 **For agents:** The skill activates automatically when you work with ClickHouse—creating tables, writing queries, or designing data pipelines.
 
+### ClickHouse Architecture Advisor
+
+**5 decision frameworks** covering workload-aware architecture decisions for real-time ClickHouse deployments.
+
+| Decision Area | Impact |
+|---------------|--------|
+| Ingestion Strategy | CRITICAL |
+| Join & Enrichment Patterns | CRITICAL |
+| Late-Arriving Data & Upserts | CRITICAL |
+| Time-Series Partitioning | HIGH |
+| Real-Time Pre-Aggregation | HIGH |
+
+Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* — not just *what*. All recommendations are explicitly classified as `official`, `derived`, or `field` guidance.
+
+**Location:** [`skills/clickhouse-architecture-advisor/`](./skills/clickhouse-architecture-advisor/)
+
+**For humans:** Read [SKILL.md](./skills/clickhouse-architecture-advisor/SKILL.md) for an overview, or [AGENTS.md](./skills/clickhouse-architecture-advisor/AGENTS.md) for the compiled guide.
+
+**For agents:** The skill activates during architecture design sessions — when choosing ingestion patterns, designing time-series schemas, selecting enrichment strategies, or handling mutable state.
+
 ## Quick Start
 
 After installation, your AI agent will reference these best practices when:
