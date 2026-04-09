@@ -54,11 +54,13 @@ If not found, install it:
 curl -fsSL https://clickhouse.com/cli | sh
 ```
 
-Now authenticate. There are three options — choose based on the situation:
+Now authenticate. There are two options — choose based on the situation:
 
-### Option A: Browser login (preferred)
+> **Important: OAuth login is read-only.** Browser login (Option A) grants read-only access — you can list organizations, services, and query existing services, but you **cannot** create, modify, or delete services. Any destructive or mutating cloud operation (service creation, deletion, scaling, etc.) **requires API key authentication** (Option B). If this workflow involves creating or changing cloud resources, you must use Option B.
 
-This is the best option when a human is available to open a browser. It uses OAuth device flow — no API keys needed.
+### Option A: Browser login (read-only access)
+
+Use this when a human is available to open a browser and you only need to inspect existing cloud resources (list orgs, list services, query data). It uses OAuth device flow — no API keys needed.
 
 Instruct the user to run:
 
@@ -68,9 +70,11 @@ clickhousectl cloud login
 
 This prints a URL and a code. The user opens the URL in their browser, confirms the code, and logs in with their ClickHouse Cloud account. The CLI automatically receives credentials once the browser flow completes.
 
-### Option B: Non-interactive API key auth (for headless/CI environments)
+This is sufficient for steps that only read data (e.g., `cloud org list`, `cloud service get`, `cloud service client`). For any step that creates or modifies resources, switch to API key auth.
 
-If there is no human in the loop (e.g., CI/CD, automated scripts), use API key authentication. Both `--api-key` and `--api-secret` are **required** — if the user provides one without the other, tell them both are needed.
+### Option B: API key auth (required for destructive actions)
+
+**Use this option when creating, modifying, or deleting cloud resources** (e.g., `cloud service create`, `cloud service delete`). Also use this for headless/CI environments where no browser is available. Both `--api-key` and `--api-secret` are **required** — if the user provides one without the other, tell them both are needed.
 
 ```bash
 clickhousectl cloud login --api-key <key> --api-secret <secret>
@@ -99,6 +103,8 @@ This should return the user's organization.
 ---
 
 ## Step 3: Create a cloud service
+
+> **Requires API key auth.** Service creation is a mutating operation. If you authenticated with browser login (Option A) in Step 2, you must re-authenticate with API key auth (Option B) before proceeding.
 
 Create a new ClickHouse Cloud service:
 
