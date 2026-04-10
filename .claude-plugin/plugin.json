@@ -10,5 +10,5 @@
   "repository": "https://github.com/ClickHouse/agent-skills",
   "license": "Apache-2.0",
   "keywords": ["clickhouse", "database", "query-optimization", "schema-design", "best-practices", "data-ingestion"],
-  "skills": ["./skills/clickhouse-best-practices/"]
+  "skills": ["./skills/clickhouse-best-practices/", "./skills/clickhouse-architecture-advisor/"]
 }

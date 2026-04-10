@@ -27,6 +27,26 @@
         "best-practices"
       ],
       "category": "database"
+    },
+    {
+      "name": "clickhouse-architecture-advisor",
+      "source": "./skills/clickhouse-architecture-advisor/",
+      "description": "Workload-aware architecture decision skill for ClickHouse — ingestion strategies, partitioning, enrichment, upsert patterns, and pre-aggregation with explicit official/derived/field provenance",
+      "version": "0.1.0",
+      "author": {
+        "name": "ClickHouse Inc"
+      },
+      "homepage": "https://clickhouse.ai",
+      "repository": "https://github.com/ClickHouse/agent-skills",
+      "license": "Apache-2.0",
+      "keywords": [
+        "clickhouse",
+        "database",
+        "architecture",
+        "design",
+        "advisor"
+      ],
+      "category": "database"
     }
   ]
 }
