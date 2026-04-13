@@ -33,7 +33,7 @@ Match their symptoms to one of the issues in the Issue Index below. If the issue
 
 ### 3. Read the reference file
 
-Each issue has a dedicated reference file (listed below) with detailed troubleshooting steps. The reference files are **siblings of this SKILL.md in the same directory** — not in a subdirectory. For example, if this skill is at `/path/to/skill/SKILL.md`, the socket hangup reference is at `/path/to/skill/socket-hangup.md`.
+Each issue has a dedicated reference file (listed below) with detailed troubleshooting steps.
 
 ### 4. Tailor your response
 
@@ -52,30 +52,30 @@ If you still need critical info to help (like their client version when a fix is
 
 Identify the user's issue from the list below and read the corresponding reference file for detailed troubleshooting steps.
 
-| Issue | Symptoms | Reference file |
-|---|---|---|
-| **Socket Hang-Up / ECONNRESET** | `socket hang up`, `ECONNRESET`, intermittent connection drops, long-running queries timing out | `socket-hangup.md` |
-| **Data Type Mismatches** | Large integers returned as strings, decimal precision loss, Date/DateTime insertion failures | `data-types.md` |
-| **Read-Only User Errors** | Errors when using response compression with `readonly=1` users | `readonly-users.md` |
-| **Proxy / Pathname URL Confusion** | Wrong database selected, requests failing behind a proxy with a path prefix | `proxy-pathname.md` |
-| **TLS / Certificate Errors** | TLS handshake failures, certificate verification issues, mutual TLS setup | `tls.md` |
-| **Compression Not Working** | GZIP compression not activating for requests or responses | `compression.md` |
-| **Logging Not Showing Anything** | No log output, need custom logger integration | `logging.md` |
-| **Query Parameters Not Interpolated** | Parameterized queries not working, SQL injection concerns | `query-params.md` |
+| Issue                                 | Symptoms                                                                                       | Reference file                |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------- |
+| **Socket Hang-Up / ECONNRESET**       | `socket hang up`, `ECONNRESET`, intermittent connection drops, long-running queries timing out | `reference/socket-hangup.md`  |
+| **Data Type Mismatches**              | Large integers returned as strings, decimal precision loss, Date/DateTime insertion failures   | `reference/data-types.md`     |
+| **Read-Only User Errors**             | Errors when using response compression with `readonly=1` users                                 | `reference/readonly-users.md` |
+| **Proxy / Pathname URL Confusion**    | Wrong database selected, requests failing behind a proxy with a path prefix                    | `reference/proxy-pathname.md` |
+| **TLS / Certificate Errors**          | TLS handshake failures, certificate verification issues, mutual TLS setup                      | `reference/tls.md`            |
+| **Compression Not Working**           | GZIP compression not activating for requests or responses                                      | `reference/compression.md`    |
+| **Logging Not Showing Anything**      | No log output, need custom logger integration                                                  | `reference/logging.md`        |
+| **Query Parameters Not Interpolated** | Parameterized queries not working, SQL injection concerns                                      | `reference/query-params.md`   |
 
 ---
 
 ## Format Selection Quick Reference
 
-| Use case | Recommended format | Min version |
-|---|---|---|
-| Insert/select JS objects | `JSONEachRow` | all |
-| Bulk insert arrays | `JSONEachRow` | all |
-| Stream large result sets | `JSONEachRow`, `JSONCompactEachRow` | all |
-| CSV file streaming | `CSV`, `CSVWithNames` | all |
-| Parquet file streaming | `Parquet` | `>= 0.2.6` |
-| Single JSON object response | `JSON`, `JSONCompact` | `JSON` all; `JSONCompact` `>= 0.0.14` |
-| Stream with progress | `JSONEachRowWithProgress` | `>= 1.7.0` |
+| Use case                    | Recommended format                  | Min version                           |
+| --------------------------- | ----------------------------------- | ------------------------------------- |
+| Insert/select JS objects    | `JSONEachRow`                       | all                                   |
+| Bulk insert arrays          | `JSONEachRow`                       | all                                   |
+| Stream large result sets    | `JSONEachRow`, `JSONCompactEachRow` | all                                   |
+| CSV file streaming          | `CSV`, `CSVWithNames`               | all                                   |
+| Parquet file streaming      | `Parquet`                           | `>= 0.2.6`                            |
+| Single JSON object response | `JSON`, `JSONCompact`               | `JSON` all; `JSONCompact` `>= 0.0.14` |
+| Stream with progress        | `JSONEachRowWithProgress`           | `>= 1.7.0`                            |
 
 > ⚠️ `JSON` and `JSONCompact` return a single object and **cannot be streamed**.
 
