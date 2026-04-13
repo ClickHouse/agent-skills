@@ -37,7 +37,6 @@ Each issue has a dedicated reference file (listed below) with detailed troublesh
 
 ### 4. Tailor your response
 
-Don't dump the entire reference file. Instead:
 - **Lead with the diagnosis** — explain what's likely causing their issue and why.
 - **Give the fix** — show the specific code/config change for their situation.
 - **Note version constraints** — if a solution requires a minimum client version, check it against what the user told you (or flag that you need to know their version).
