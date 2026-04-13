@@ -84,5 +84,5 @@ Identify the user's issue from the list below and read the corresponding referen
 ## Still Stuck?
 
 - [JS client source + full examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples)
-- [ClickHouse JS client docs](https://clickhouse.com/docs/integrations/language-clients/javascript/usage)
+- [ClickHouse JS client docs](https://clickhouse.com/docs/integrations/javascript)
 - [ClickHouse supported formats](https://clickhouse.com/docs/interfaces/formats)
