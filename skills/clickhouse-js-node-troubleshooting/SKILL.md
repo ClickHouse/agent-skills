@@ -13,7 +13,7 @@ description: >
 
 # ClickHouse Node.js Client Troubleshooting
 
-Reference: https://clickhouse.com/docs/integrations/language-clients/javascript/usage
+Reference: https://clickhouse.com/docs/integrations/javascript
 
 > **⚠️ Node.js only.** This skill covers the `@clickhouse/client-node` package exclusively. If the user is running the ClickHouse JS client in a browser or Web Worker environment, do not use this skill — a dedicated Web client troubleshooting skill should be used instead.
 
