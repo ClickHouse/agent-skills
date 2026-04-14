@@ -158,8 +158,8 @@ scores = {"student": ["Alice", "Bob", "Carol"], "math": [95, 87, 92], "science":
 chdb.query("SELECT student, math + science AS total FROM Python(scores) ORDER BY total DESC").show()
 # Expected:
 # Alice,183
-# Carol,177
 # Bob,178
+# Carol,177
 
 # Query a pandas DataFrame in SQL
 users_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Carol"]})

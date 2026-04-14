@@ -59,8 +59,8 @@ print(df)  # pandas DataFrame
 ```python
 from chdb import session as chs
 
-sess = chs.Session(path=":memory:")     # in-memory (no persistence)
-sess = chs.Session(path="./mydb")       # persistent to disk
+sess = chs.Session()                    # in-memory (no persistence)
+sess = chs.Session("./mydb")            # persistent to disk
 ```
 
 | Method | Signature | Description |

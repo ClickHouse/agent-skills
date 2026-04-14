@@ -50,13 +50,15 @@ def check_dataframe_output():
 def check_session():
     from chdb import session as chs
     sess = chs.Session()
-    sess.query("CREATE TABLE _verify_test (id UInt64) ENGINE = Memory")
-    sess.query("INSERT INTO _verify_test VALUES (1), (2), (3)")
-    result = sess.query("SELECT count() AS cnt FROM _verify_test")
-    data = result.data()
-    if "3" not in data:
-        raise RuntimeError(f"Expected '3' in output, got: {data!r}")
-    sess.close()
+    try:
+        sess.query("CREATE TABLE _verify_test (id UInt64) ENGINE = Memory")
+        sess.query("INSERT INTO _verify_test VALUES (1), (2), (3)")
+        result = sess.query("SELECT count() AS cnt FROM _verify_test")
+        data = result.data()
+        if "3" not in data:
+            raise RuntimeError(f"Expected '3' in output, got: {data!r}")
+    finally:
+        sess.close()
 
 
 def check_parametrized():

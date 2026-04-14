@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "March 2026",
+  "abstract": "Step-by-step workflow for deploying to ClickHouse Cloud using clickhousectl. Covers signing up for ClickHouse Cloud, authenticating the CLI, creating a cloud service, migrating local schemas, and connecting an application to the cloud service.",
+  "references": [
+    "https://clickhouse.com/docs",
+    "https://github.com/ClickHouse/clickhousectl",
+    "https://clickhouse.cloud"
+  ]
+}
