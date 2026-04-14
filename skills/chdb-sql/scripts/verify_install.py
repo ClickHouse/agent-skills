@@ -19,12 +19,14 @@ def check(name, fn):
 
 
 def check_python_version():
-    assert sys.version_info >= (3, 9), f"Python 3.9+ required, got {sys.version}"
+    if sys.version_info < (3, 9):
+        raise RuntimeError(f"Python 3.9+ required, got {sys.version}")
 
 
 def check_chdb_import():
     import chdb
-    assert hasattr(chdb, "__version__"), "chdb imported but missing __version__"
+    if not hasattr(chdb, "__version__"):
+        raise RuntimeError("chdb imported but missing __version__")
     print(f"         chdb version: {chdb.__version__}")
 
 
@@ -32,14 +34,17 @@ def check_basic_query():
     import chdb
     result = chdb.query("SELECT 1 + 1 AS answer")
     data = result.data()
-    assert "2" in data, f"Expected '2' in output, got: {data!r}"
+    if "2" not in data:
+        raise RuntimeError(f"Expected '2' in output, got: {data!r}")
 
 
 def check_dataframe_output():
     import chdb
     df = chdb.query("SELECT number FROM numbers(5)", "DataFrame")
-    assert len(df) == 5, f"Expected 5 rows, got {len(df)}"
-    assert "number" in df.columns, f"Expected 'number' column, got {list(df.columns)}"
+    if len(df) != 5:
+        raise RuntimeError(f"Expected 5 rows, got {len(df)}")
+    if "number" not in df.columns:
+        raise RuntimeError(f"Expected 'number' column, got {list(df.columns)}")
 
 
 def check_session():
@@ -49,7 +54,8 @@ def check_session():
     sess.query("INSERT INTO _verify_test VALUES (1), (2), (3)")
     result = sess.query("SELECT count() AS cnt FROM _verify_test")
     data = result.data()
-    assert "3" in data, f"Expected '3' in output, got: {data!r}"
+    if "3" not in data:
+        raise RuntimeError(f"Expected '3' in output, got: {data!r}")
     sess.close()
 
 
@@ -59,7 +65,8 @@ def check_parametrized():
         "SELECT {x:UInt64} + {y:UInt64} AS sum",
         params={"x": 10, "y": 20})
     data = result.data()
-    assert "30" in data, f"Expected '30' in output, got: {data!r}"
+    if "30" not in data:
+        raise RuntimeError(f"Expected '30' in output, got: {data!r}")
 
 
 if __name__ == "__main__":
