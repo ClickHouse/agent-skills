@@ -1,0 +1,10 @@
+{
+  "version": "4.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "March 2026",
+  "abstract": "In-process ClickHouse SQL engine for Python. Run SQL queries on local files, remote databases, and cloud storage without a server. Covers chdb.query(), Session, DB-API 2.0, parametrized queries, UDFs, streaming, and all ClickHouse table functions.",
+  "references": [
+    "https://clickhouse.com/docs/chdb",
+    "https://github.com/chdb-io/chdb"
+  ]
+}
