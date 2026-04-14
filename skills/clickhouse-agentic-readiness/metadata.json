@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "April 2026",
+  "clickhouseVersion": "24.1+",
+  "abstract": "Assesses whether a ClickHouse deployment is ready for autonomous AI agent analytics. Evaluates 20 rules across 6 categories (schema discoverability, semantic clarity, query safety, performance predictability, pipeline health, access control), scored on a 100-point scale. Runs diagnostic SQL against system tables and produces a readiness report with prioritized remediation.",
+  "references": [
+    "https://clickhouse.com/docs",
+    "https://clickhouse.com/docs/operations/system-tables"
+  ]
+}
