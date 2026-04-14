@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "April 2026",
+  "clickhouseVersion": "24.1+",
+  "abstract": "Architecture decision skill for ClickHouse workloads. Complements clickhouse-best-practices with workload-aware decision frameworks for real-time ingestion, time-series partitioning, enrichment joins, upsert patterns, and pre-aggregation. Recommendations are explicitly labeled as official, derived, or field guidance.",
+  "references": [
+    "https://clickhouse.com/docs/best-practices",
+    "https://clickhouse.com/docs/en/operations/settings/settings#async_insert",
+    "https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/custom-partitioning-key",
+    "https://clickhouse.com/docs/en/sql-reference/dictionaries",
+    "https://clickhouse.com/docs/materialized-view/incremental-materialized-view",
+    "https://clickhouse.com/docs/en/guides/replacing-merge-tree"
+  ]
+}
