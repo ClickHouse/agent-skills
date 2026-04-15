@@ -11,6 +11,27 @@ tags: [agent, mcp, cli, connectivity, setup]
 
 Two connection methods, each with a clear use case. Pick one based on your environment.
 
+**Incorrect (prompting for credentials every time):**
+
+```python
+# Agent asks the user for host, port, user, password on every session
+# Credentials are hardcoded in the prompt or conversation
+response = client.query("SELECT 1",
+    host="???", user="???", password="???")  # fragile, unsecured
+```
+
+**Correct (MCP or CLI with pre-configured credentials):**
+
+```bash
+# MCP: credentials configured once via env vars or OAuth
+claude mcp add --transport http clickhouse-cloud https://mcp.clickhouse.cloud/mcp
+
+# CLI: credentials in a named profile or env vars
+clickhouse client --host abc123.clickhouse.cloud --port 9440 --secure \
+  --user default --password "$CLICKHOUSE_PASSWORD" --format JSON \
+  --query "SELECT 1"
+```
+
 ### Option A: MCP Server (interactive agent workflows)
 
 Best for schema discovery, iterative analysis, and multi-step conversations.
