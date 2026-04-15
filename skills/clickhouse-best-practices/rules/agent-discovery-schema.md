@@ -89,8 +89,8 @@ GROUP BY event_type;
 
 Look for:
 - **Keys** section showing your sort key columns are being used for filtering
+- **Parts** and **Granules** counts — if these are not significantly reduced from the total, your filters aren't pruning effectively
 - **Skip** entries showing data skipping index usage
-- **ReadType: Normal** (good) vs **ReadType: InOrder** or full scan indicators
 
 For a quick cost estimate without running the query:
 

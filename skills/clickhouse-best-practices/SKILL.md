@@ -25,13 +25,9 @@ Comprehensive guidance for ClickHouse covering schema design, query optimization
 
 **Why rules take priority:** ClickHouse has specific behaviors (columnar storage, sparse indexes, merge tree mechanics) where general database intuition can be misleading. The rules encode validated, ClickHouse-specific guidance.
 
-### For Formal Reviews
-
-When performing a formal review of schemas, queries, or data ingestion:
-
 ---
 
-## Agent Connectivity Setup
+## Agent Connectivity & Query Workflow
 
 Before querying ClickHouse, agents must establish a connection and follow the discovery workflow:
 
@@ -39,29 +35,20 @@ Before querying ClickHouse, agents must establish a connection and follow the di
 2. `rules/agent-discovery-schema.md` - **CRITICAL**: 7-step schema discovery workflow
 3. `rules/agent-query-safety.md` - **CRITICAL**: LIMIT, timeouts, progressive exploration
 
-### Quick Setup (ClickHouse Cloud)
+**Every agent session should follow this sequence:**
 
-**MCP (recommended for interactive agent use):**
-```bash
-claude mcp add --transport http clickhouse-cloud https://mcp.clickhouse.cloud/mcp
-```
-
-**CLI (recommended for batch operations):**
-```bash
-clickhouse client --host <host> --port 9440 --secure --user default --password <password> \
-  --format JSON --max_execution_time 30
-```
-
-### Agent Query Workflow
-
-Every agent session should follow this sequence:
-
-1. **Connect** — establish connection via MCP or CLI
-2. **Discover** — run schema discovery queries (databases → tables → columns → sort keys → skip indexes → sample)
+1. **Connect** — establish connection via MCP or CLI (see `agent-connect-mcp`)
+2. **Discover** — databases → tables → columns + comments → sort keys → skip indexes → sample → EXPLAIN
 3. **Plan** — use sort key and skip index knowledge to write efficient WHERE clauses
-4. **Verify** — run `EXPLAIN indexes=1` or `EXPLAIN ESTIMATE` to confirm the query plan is efficient
-5. **Execute** — run queries with LIMIT and timeouts
-6. **Validate** — check `system.query_log` if query was slow
+4. **Execute** — run queries with LIMIT and timeouts
+5. **Recover** — on timeout/memory errors, narrow filters and retry (see `agent-query-safety`)
+
+### Subagent architecture notes
+
+If your system dispatches ClickHouse tasks to specialized subagents:
+- **Schema discovery + query execution**: any model — the steps are procedural
+- **EXPLAIN analysis + query optimization**: benefits from mid-tier reasoning
+- **Schema design review against all 28 rules**: benefits from mid-tier reasoning
 
 ---
 

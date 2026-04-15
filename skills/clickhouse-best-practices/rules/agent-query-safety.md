@@ -34,13 +34,19 @@ LIMIT 100
 SETTINGS max_execution_time = 30
 ```
 
-**Safety settings reference:**
+**Recommended per-query settings** (ClickHouse defaults are unlimited — always override):
 
-| Setting | Default | Effect |
-|---------|---------|--------|
+| Setting | Recommended | Effect |
+|---------|-------------|--------|
 | `max_execution_time` | 30 | Kills query after N seconds |
 | `max_result_rows` | 10000 | Caps output rows |
 | `result_overflow_mode` | `'break'` | Truncates instead of erroring |
+
+**When things go wrong:**
+
+- **Timeout** (`TIMEOUT_EXCEEDED`): Narrow the time range, add sort key filters, or use `EXPLAIN ESTIMATE` to check scan size before retrying
+- **Memory error** (`MEMORY_LIMIT_EXCEEDED`): Add `LIMIT`, reduce `max_memory_usage`, or break the query into smaller time windows
+- **Too many parts** (`TOO_MANY_PARTS`): Back off inserts — the merge process is behind. Wait and retry.
 
 **Progressive exploration pattern:**
 

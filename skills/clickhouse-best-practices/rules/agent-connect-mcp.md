@@ -38,7 +38,11 @@ pip install mcp-clickhouse
 
 Enable writes: `export CLICKHOUSE_ALLOW_WRITE_ACCESS=true`
 
-**Limitation:** MCP has ~200-500ms overhead per call. For large result sets or batch operations, use CLI.
+**Limitations:**
+- MCP has ~200-500ms overhead per call. For large result sets or batch operations, use CLI.
+- MCP's `list_tables` may not surface column `COMMENT` annotations — query `system.columns` directly for full schema context (see `agent-discovery-schema`).
+
+**ClickHouse Cloud note:** Services can be idle/sleeping. The first query after inactivity may take 10-20 seconds while the service wakes up. A timeout or `503` on first connection is expected — retry once before treating it as an error.
 
 ### Option B: clickhouse-client (batch operations, large results)
 
@@ -68,9 +72,10 @@ Always specify a format. The default (TabSeparated without headers) is unparseab
 
 | Format | Tokens (1K rows) | Best For |
 |--------|------------------|----------|
-| `JSON` | High (~20K) | Single queries — includes column types, row count, statistics |
-| `JSONEachRow` | Medium (~15K) | Streaming large results, piping through `jq` |
-| `TabSeparatedWithNames` | Low (~4K) | Minimal tokens, simple tabular data |
+| `JSON` | ~20K | Single queries — includes column types, row count, statistics |
+| `JSONCompact` | ~10K | Same metadata as JSON but rows as arrays — good for wide tables |
+| `JSONEachRow` | ~15K | Streaming large results, piping through `jq` |
+| `TabSeparatedWithNames` | ~4K | Minimal tokens, simple tabular data |
 
 Use `JSON` as the default for agent work. Switch to `TabSeparatedWithNames` when result sets are large and context window budget matters.
 
