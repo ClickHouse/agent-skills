@@ -3,9 +3,6 @@ title: Connect AI Agents to ClickHouse
 impact: HIGH
 impactDescription: "Proper connection setup eliminates credential-prompting friction and enables structured access"
 tags: [agent, mcp, cli, connectivity, setup]
-recommended_models:
-  min: "haiku / gemini-flash / gpt-4o-mini"
-  note: "Setup is procedural — follow the steps. No reasoning needed."
 ---
 
 ## Connect AI Agents to ClickHouse

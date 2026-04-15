@@ -3,9 +3,6 @@ title: Apply Safety Limits to Agent-Generated Queries
 impact: CRITICAL
 impactDescription: "Unbounded agent queries can scan billions of rows and saturate cluster resources"
 tags: [agent, safety, limits, timeout]
-recommended_models:
-  min: "sonnet / gemini-pro / gpt-4o"
-  note: "Needs to reason about filter selectivity and progressive exploration strategy."
 ---
 
 ## Apply Safety Limits to Agent-Generated Queries

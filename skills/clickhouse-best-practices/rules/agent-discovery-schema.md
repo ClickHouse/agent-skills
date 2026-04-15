@@ -3,10 +3,6 @@ title: Discover Schema Before Querying
 impact: CRITICAL
 impactDescription: "Skipping schema discovery leads to full scans, wrong columns, and wasted compute"
 tags: [agent, schema, discovery, workflow]
-recommended_models:
-  min: "haiku / gemini-flash / gpt-4o-mini"
-  optimal: "sonnet / gemini-pro / gpt-4o"
-  note: "Discovery steps are procedural (any model). EXPLAIN interpretation benefits from stronger reasoning."
 ---
 
 ## Discover Schema Before Querying
