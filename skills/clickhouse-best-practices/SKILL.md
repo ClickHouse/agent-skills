@@ -1,6 +1,6 @@
 ---
 name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 28 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+description: "Validates ClickHouse table schemas, optimizes queries, and audits data ingestion patterns using 28 prioritized rules covering primary key design, data type selection, JOIN optimization, partition strategy, materialized views, and mutation avoidance. Use when reviewing CREATE TABLE statements, optimizing ClickHouse queries, selecting MergeTree engine variants, designing ORDER BY keys, tuning JOIN performance, choosing partition strategies, or applying ClickHouse best practices. Read relevant rule files from rules/ and cite specific rules in responses."
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
@@ -15,7 +15,7 @@ Comprehensive guidance for ClickHouse covering schema design, query optimization
 
 ## IMPORTANT: How to Apply This Skill
 
-**Before answering ClickHouse questions, follow this priority order:**
+**When answering ClickHouse questions, follow this priority order:**
 
 1. **Check for applicable rules** in the `rules/` directory
 2. **If rules exist:** Apply them and cite them in your response using "Per `rule-name`..."
@@ -130,100 +130,6 @@ Structure your response as follows:
 | 9 | Async Inserts | HIGH | `insert-async-` | 2 |
 | 10 | OPTIMIZE Avoidance | HIGH | `insert-optimize-` | 1 |
 | 11 | JSON Usage | MEDIUM | `schema-json-` | 1 |
-
----
-
-## Quick Reference
-
-### Schema Design - Primary Key (CRITICAL)
-
-- `schema-pk-plan-before-creation` - Plan ORDER BY before table creation (immutable)
-- `schema-pk-cardinality-order` - Order columns low-to-high cardinality
-- `schema-pk-prioritize-filters` - Include frequently filtered columns
-- `schema-pk-filter-on-orderby` - Query filters must use ORDER BY prefix
-
-### Schema Design - Data Types (CRITICAL)
-
-- `schema-types-native-types` - Use native types, not String for everything
-- `schema-types-minimize-bitwidth` - Use smallest numeric type that fits
-- `schema-types-lowcardinality` - LowCardinality for <10K unique strings
-- `schema-types-enum` - Enum for finite value sets with validation
-- `schema-types-avoid-nullable` - Avoid Nullable; use DEFAULT instead
-
-### Schema Design - Partitioning (HIGH)
-
-- `schema-partition-low-cardinality` - Keep partition count 100-1,000
-- `schema-partition-lifecycle` - Use partitioning for data lifecycle, not queries
-- `schema-partition-query-tradeoffs` - Understand partition pruning trade-offs
-- `schema-partition-start-without` - Consider starting without partitioning
-
-### Schema Design - JSON (MEDIUM)
-
-- `schema-json-when-to-use` - JSON for dynamic schemas; typed columns for known
-
-### Query Optimization - JOINs (CRITICAL)
-
-- `query-join-choose-algorithm` - Select algorithm based on table sizes
-- `query-join-use-any` - ANY JOIN when only one match needed
-- `query-join-filter-before` - Filter tables before joining
-- `query-join-consider-alternatives` - Dictionaries/denormalization vs JOIN
-- `query-join-null-handling` - join_use_nulls=0 for default values
-
-### Query Optimization - Indices (HIGH)
-
-- `query-index-skipping-indices` - Skipping indices for non-ORDER BY filters
-
-### Query Optimization - Materialized Views (HIGH)
-
-- `query-mv-incremental` - Incremental MVs for real-time aggregations
-- `query-mv-refreshable` - Refreshable MVs for complex joins
-
-### Insert Strategy - Batching (CRITICAL)
-
-- `insert-batch-size` - Batch 10K-100K rows per INSERT
-
-### Insert Strategy - Async (HIGH)
-
-- `insert-async-small-batches` - Async inserts for high-frequency small batches
-- `insert-format-native` - Native format for best performance
-
-### Insert Strategy - Mutations (CRITICAL)
-
-- `insert-mutation-avoid-update` - ReplacingMergeTree instead of ALTER UPDATE
-- `insert-mutation-avoid-delete` - Lightweight DELETE or DROP PARTITION
-
-### Insert Strategy - Optimization (HIGH)
-
-- `insert-optimize-avoid-final` - Let background merges work
-
----
-
-## When to Apply
-
-This skill activates when you encounter:
-
-- `CREATE TABLE` statements
-- `ALTER TABLE` modifications
-- `ORDER BY` or `PRIMARY KEY` discussions
-- Data type selection questions
-- Slow query troubleshooting
-- JOIN optimization requests
-- Data ingestion pipeline design
-- Update/delete strategy questions
-- ReplacingMergeTree or other specialized engine usage
-- Partitioning strategy decisions
-
----
-
-## Rule File Structure
-
-Each rule file in `rules/` contains:
-
-- **YAML frontmatter**: title, impact level, tags
-- **Brief explanation**: Why this rule matters
-- **Incorrect example**: Anti-pattern with explanation
-- **Correct example**: Best practice with explanation
-- **Additional context**: Trade-offs, when to apply, references
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: clickhousectl-cloud-deploy
-description: Use when a user wants to deploy ClickHouse to the cloud, go to production, use ClickHouse Cloud, host a managed ClickHouse service, or migrate from a local ClickHouse setup to ClickHouse Cloud.
+description: "Guides deployment to ClickHouse Cloud using clickhousectl — covers CLI authentication (browser OAuth and API key), cloud service creation, schema migration from local development, deployment verification, and application connection configuration. Use when the user wants to deploy ClickHouse to the cloud, go to production, use ClickHouse Cloud, host a managed ClickHouse service, or migrate from a local ClickHouse setup to ClickHouse Cloud."
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
@@ -11,17 +11,6 @@ metadata:
 
 This skill walks through deploying to ClickHouse Cloud using `clickhousectl`. It covers account setup, CLI authentication, service creation, schema migration, and connecting your application. Follow these steps in order.
 
-## When to Apply
-
-Use this skill when the user wants to:
-- Deploy their ClickHouse application to production
-- Host ClickHouse as a managed cloud service
-- Migrate from a local ClickHouse setup to ClickHouse Cloud
-- Create a ClickHouse Cloud service
-- Set up ClickHouse Cloud for the first time
-
----
-
 ## Step 1: Sign up for ClickHouse Cloud
 
 Before using any cloud commands, the user needs a ClickHouse Cloud account.
@@ -30,11 +19,7 @@ Before using any cloud commands, the user needs a ClickHouse Cloud account.
 
 **If they do not have an account**, explain:
 
-> ClickHouse Cloud is a fully managed service that runs ClickHouse for you — no infrastructure to maintain, automatic scaling, backups, and upgrades included. There's a free trial so you can get started without a credit card.
->
-> To create an account, go to: **https://clickhouse.cloud**
->
-> Sign up with your email, Google, or GitHub account. Once you're in the console, let me know and we'll continue with the next step.
+> To create an account, go to **https://clickhouse.cloud** and sign up with email, Google, or GitHub. There's a free trial — no credit card needed.
 
 **Wait for the user to confirm** they have signed up or already have an account before proceeding.
 
@@ -82,13 +67,7 @@ clickhousectl cloud login --api-key <key> --api-secret <secret>
 
 If the user doesn't have API keys yet, guide them to create one:
 
-> In the ClickHouse Cloud console:
-> 1. Click the **gear icon** (Settings) in the left sidebar
-> 2. Go to **API Keys**
-> 3. Click **Create API Key**
-> 4. Give it a name (e.g., "cli") and select the **Admin** role
-> 5. Click **Generate API Key**
-> 6. **Copy both the Key ID and the Key Secret** — the secret is only shown once
+> In the ClickHouse Cloud console, go to **Settings → API Keys → Create API Key** (Admin role). Copy both the Key ID and Key Secret — the secret is only shown once.
 
 ---
 
@@ -181,9 +160,8 @@ Provide the user with the connection details:
 - **Password:** the password from step 3 (service creation)
 - **SSL/TLS:** required (always enabled on Cloud)
 
-**Example connection strings** (adapt to the user's language/framework):
+**Example connection** (adapt to the user's language/framework):
 
-**Python (clickhouse-connect):**
 ```python
 import clickhouse_connect
 
@@ -194,29 +172,6 @@ client = clickhouse_connect.get_client(
     password='<password>',
     secure=True
 )
-```
-
-**Node.js (@clickhouse/client):**
-```javascript
-import { createClient } from '@clickhouse/client'
-
-const client = createClient({
-  url: 'https://<cloud-host>:8443',
-  username: 'default',
-  password: '<password>',
-})
-```
-
-**Go (clickhouse-go):**
-```go
-conn, err := clickhouse.Open(&clickhouse.Options{
-    Addr: []string{"<cloud-host>:9440"},
-    Auth: clickhouse.Auth{
-        Username: "default",
-        Password: "<password>",
-    },
-    TLS: &tls.Config{},
-})
 ```
 
 Suggest the user store the password in an environment variable or secrets manager rather than hardcoding it.

@@ -1,17 +1,6 @@
 ---
 name: chdb-datastore
-description: >-
-  Drop-in pandas replacement with ClickHouse performance. Use
-  `import chdb.datastore as pd` (or `from datastore import DataStore`)
-  and write standard pandas code — same API, 10-100x faster on large
-  datasets. Supports 16+ data sources (MySQL, PostgreSQL, S3, MongoDB,
-  ClickHouse, Iceberg, Delta Lake, etc.) and 10+ file formats (Parquet,
-  CSV, JSON, Arrow, ORC, etc.) with cross-source joins. Use this skill
-  when the user wants to analyze data with pandas-style syntax, speed
-  up slow pandas code, query remote databases or cloud storage as
-  DataFrames, or join data across different sources — even if they
-  don't explicitly mention chdb or DataStore. Do NOT use for raw SQL
-  queries, ClickHouse server administration, or non-Python languages.
+description: "Drop-in pandas replacement with ClickHouse performance. Use `import chdb.datastore as pd` (or `from datastore import DataStore`) and write standard pandas code — same API, 10-100x faster on large datasets. Supports 16+ data sources (MySQL, PostgreSQL, S3, MongoDB, ClickHouse, Iceberg, Delta Lake, etc.) and 10+ file formats (Parquet, CSV, JSON, Arrow, ORC, etc.) with cross-source joins. Use this skill when the user wants to analyze data with pandas-style syntax, speed up slow pandas code, query remote databases or cloud storage as DataFrames, or join data across different sources — even if they don't explicitly mention chdb or DataStore. Do NOT use for raw SQL queries, ClickHouse server administration, or non-Python languages."
 license: Apache-2.0
 compatibility: Requires Python 3.9+, macOS or Linux. pip install chdb.
 metadata:
@@ -107,6 +96,8 @@ result = (orders
     .agg({"amount": "sum", "rating": "mean"})
     .sort_values("sum", ascending=False))
 print(result)
+# Debug: inspect the generated SQL if results look unexpected
+print(result.to_sql())
 ```
 
 More join examples → [examples.md](examples/examples.md)
@@ -120,6 +111,11 @@ target = DataStore("file", path="summary.parquet", format="Parquet")
 target.insert_into("category", "total", "count").select_from(
     source.groupby("category").select("category", "sum(amount) AS total", "count() AS count")
 ).execute()
+
+# Verify the write succeeded
+result = DataStore.from_file("summary.parquet")
+print(f"Written {len(result)} rows")
+print(result.head(5))
 ```
 
 ## Troubleshooting
