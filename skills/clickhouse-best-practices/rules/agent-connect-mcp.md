@@ -78,6 +78,19 @@ clickhouse client \
   --query "SELECT * FROM events LIMIT 100" 2>&1
 ```
 
+### Option C: HTTP interface (fallback when CLI is unavailable)
+
+If you have credentials but can't install `clickhouse-client` (lambda, sandbox, web-based agent), use the HTTP interface directly:
+
+```bash
+curl -s "https://abc123.clickhouse.cloud:8443/" \
+  -H "X-ClickHouse-User: default" \
+  -H "X-ClickHouse-Key: your-password" \
+  --data-binary "SELECT name, engine FROM system.tables WHERE database = 'default' FORMAT JSON"
+```
+
+Port `8443` is HTTPS. Pass query settings as URL params: `?max_execution_time=30&max_result_rows=10000`.
+
 ### Where to find connection credentials (ClickHouse Cloud)
 
 1. Go to [console.clickhouse.cloud](https://console.clickhouse.cloud)
