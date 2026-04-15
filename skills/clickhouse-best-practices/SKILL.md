@@ -4,12 +4,12 @@ description: MUST USE when reviewing ClickHouse schemas, queries, or configurati
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, and data ingestion. Contains 28 rules across 3 main categories (schema, query, insert), prioritized by impact.
+Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 34 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
 
 > **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
@@ -28,6 +28,46 @@ Comprehensive guidance for ClickHouse covering schema design, query optimization
 ### For Formal Reviews
 
 When performing a formal review of schemas, queries, or data ingestion:
+
+---
+
+## Agent Connectivity Setup
+
+Before querying ClickHouse, agents must establish a connection. Read the applicable rule file for your access method:
+
+1. `rules/agent-connect-mcp.md` - MCP server setup (interactive workflows)
+2. `rules/agent-connect-cli.md` - clickhouse-client (batch operations, large results)
+3. `rules/agent-connect-http.md` - HTTP interface (programmatic access, lambdas)
+
+**Then always follow the discovery and safety workflow:**
+
+4. `rules/agent-discovery-schema.md` - **CRITICAL**: Discover schema before writing any queries
+5. `rules/agent-query-safety.md` - **CRITICAL**: Apply LIMIT, timeouts, and progressive exploration
+6. `rules/agent-format-selection.md` - Choose output format to minimize tokens and maximize parseability
+
+### Quick Setup (ClickHouse Cloud)
+
+**MCP (recommended for interactive agent use):**
+```bash
+claude mcp add --transport http clickhouse-cloud https://mcp.clickhouse.cloud/mcp
+```
+
+**CLI (recommended for batch operations):**
+```bash
+clickhouse client --host <host> --port 9440 --secure --user default --password <password> \
+  --format JSON --max_execution_time 30
+```
+
+### Agent Query Workflow
+
+Every agent session should follow this sequence:
+
+1. **Connect** — establish connection via MCP or CLI
+2. **Discover** — run schema discovery queries (databases → tables → columns → sort keys → skip indexes → sample)
+3. **Plan** — use sort key and skip index knowledge to write efficient WHERE clauses
+4. **Verify** — run `EXPLAIN indexes=1` or `EXPLAIN ESTIMATE` to confirm the query plan is efficient
+5. **Execute** — run queries with LIMIT and timeouts
+6. **Validate** — check `system.query_log` if query was slow
 
 ---
 
@@ -130,6 +170,10 @@ Structure your response as follows:
 | 9 | Async Inserts | HIGH | `insert-async-` | 2 |
 | 10 | OPTIMIZE Avoidance | HIGH | `insert-optimize-` | 1 |
 | 11 | JSON Usage | MEDIUM | `schema-json-` | 1 |
+| 12 | Agent Schema Discovery | CRITICAL | `agent-discovery-` | 1 |
+| 13 | Agent Query Safety | CRITICAL | `agent-query-` | 1 |
+| 14 | Agent Connectivity | HIGH | `agent-connect-` | 3 |
+| 15 | Agent Output Formats | HIGH | `agent-format-` | 1 |
 
 ---
 
@@ -196,11 +240,33 @@ Structure your response as follows:
 
 - `insert-optimize-avoid-final` - Let background merges work
 
+### Agent Integration - Discovery (CRITICAL)
+
+- `agent-discovery-schema` - Always discover schema before querying
+
+### Agent Integration - Safety (CRITICAL)
+
+- `agent-query-safety` - LIMIT, timeouts, progressive exploration
+
+### Agent Integration - Connectivity (HIGH)
+
+- `agent-connect-mcp` - MCP server for interactive agent workflows
+- `agent-connect-cli` - clickhouse-client for batch and large results
+- `agent-connect-http` - HTTP interface for programmatic access
+
+### Agent Integration - Output (HIGH)
+
+- `agent-format-selection` - JSON vs JSONEachRow vs TSV for token efficiency
+
 ---
 
 ## When to Apply
 
 This skill activates when you encounter:
+
+- AI agent connecting to ClickHouse (MCP, CLI, HTTP)
+- Agent workflow design for ClickHouse
+- Schema discovery or exploration requests
 
 - `CREATE TABLE` statements
 - `ALTER TABLE` modifications
