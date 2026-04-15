@@ -1,6 +1,6 @@
 ---
 name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 28 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 31 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
@@ -9,7 +9,7 @@ metadata:
 
 # ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 34 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
+Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 31 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
 
 > **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
@@ -33,17 +33,11 @@ When performing a formal review of schemas, queries, or data ingestion:
 
 ## Agent Connectivity Setup
 
-Before querying ClickHouse, agents must establish a connection. Read the applicable rule file for your access method:
+Before querying ClickHouse, agents must establish a connection and follow the discovery workflow:
 
-1. `rules/agent-connect-mcp.md` - MCP server setup (interactive workflows)
-2. `rules/agent-connect-cli.md` - clickhouse-client (batch operations, large results)
-3. `rules/agent-connect-http.md` - HTTP interface (programmatic access, lambdas)
-
-**Then always follow the discovery and safety workflow:**
-
-4. `rules/agent-discovery-schema.md` - **CRITICAL**: Discover schema before writing any queries
-5. `rules/agent-query-safety.md` - **CRITICAL**: Apply LIMIT, timeouts, and progressive exploration
-6. `rules/agent-format-selection.md` - Choose output format to minimize tokens and maximize parseability
+1. `rules/agent-connect-mcp.md` - Connection setup (MCP + CLI), credential discovery, output format selection
+2. `rules/agent-discovery-schema.md` - **CRITICAL**: 7-step schema discovery workflow
+3. `rules/agent-query-safety.md` - **CRITICAL**: LIMIT, timeouts, progressive exploration
 
 ### Quick Setup (ClickHouse Cloud)
 
@@ -172,8 +166,7 @@ Structure your response as follows:
 | 11 | JSON Usage | MEDIUM | `schema-json-` | 1 |
 | 12 | Agent Schema Discovery | CRITICAL | `agent-discovery-` | 1 |
 | 13 | Agent Query Safety | CRITICAL | `agent-query-` | 1 |
-| 14 | Agent Connectivity | HIGH | `agent-connect-` | 3 |
-| 15 | Agent Output Formats | HIGH | `agent-format-` | 1 |
+| 14 | Agent Connectivity + Formats | HIGH | `agent-connect-` | 1 |
 
 ---
 
@@ -248,15 +241,9 @@ Structure your response as follows:
 
 - `agent-query-safety` - LIMIT, timeouts, progressive exploration
 
-### Agent Integration - Connectivity (HIGH)
+### Agent Integration - Connectivity + Formats (HIGH)
 
-- `agent-connect-mcp` - MCP server for interactive agent workflows
-- `agent-connect-cli` - clickhouse-client for batch and large results
-- `agent-connect-http` - HTTP interface for programmatic access
-
-### Agent Integration - Output (HIGH)
-
-- `agent-format-selection` - JSON vs JSONEachRow vs TSV for token efficiency
+- `agent-connect-mcp` - MCP + CLI setup, credential discovery, output format selection
 
 ---
 

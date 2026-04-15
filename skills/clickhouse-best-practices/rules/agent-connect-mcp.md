@@ -1,68 +1,80 @@
 ---
-title: Use MCP Server for AI Agent Integration
+title: Connect AI Agents to ClickHouse
 impact: HIGH
-impactDescription: "MCP provides schema-aware, interactive access ideal for agent workflows"
-tags: [agent, mcp, connectivity, setup]
+impactDescription: "Proper connection setup eliminates credential-prompting friction and enables structured access"
+tags: [agent, mcp, cli, connectivity, setup]
+recommended_models:
+  min: "haiku / gemini-flash / gpt-4o-mini"
+  note: "Setup is procedural — follow the steps. No reasoning needed."
 ---
 
-## Use MCP Server for AI Agent Integration
+## Connect AI Agents to ClickHouse
 
 **Impact: HIGH**
 
-The Model Context Protocol (MCP) gives AI agents structured access to ClickHouse — schema discovery, query execution, and result parsing in one integration. Two options exist depending on your deployment.
+Two connection methods, each with a clear use case. Pick one based on your environment.
 
-**Option 1: Self-hosted `mcp-clickhouse`**
+### Option A: MCP Server (interactive agent workflows)
 
-Install and configure the open-source MCP server locally:
+Best for schema discovery, iterative analysis, and multi-step conversations.
 
-```bash
-pip install mcp-clickhouse
-```
-
-Required environment variables:
-
-| Variable | Example | Notes |
-|----------|---------|-------|
-| `CLICKHOUSE_HOST` | `abc123.clickhouse.cloud` | Your ClickHouse hostname |
-| `CLICKHOUSE_USER` | `default` | Database user |
-| `CLICKHOUSE_PASSWORD` | `your-password` | Database password |
-| `CLICKHOUSE_SECURE` | `true` | Always `true` for ClickHouse Cloud |
-
-**Where to find these values (ClickHouse Cloud):**
-
-1. Go to [console.clickhouse.cloud](https://console.clickhouse.cloud)
-2. Click on your service
-3. Click **Connect** in the left sidebar
-4. The connection dialog shows your **hostname**, **port**, and **default user**
-5. If you need to reset the password, click **Reset password** in the same dialog
-
-For self-managed deployments, check your server's `config.xml` or ask your ClickHouse administrator.
-
-Write access is disabled by default. To enable:
-
-```bash
-export CLICKHOUSE_ALLOW_WRITE_ACCESS=true
-```
-
-**Option 2: ClickHouse Cloud Remote MCP (read-only)**
-
-For ClickHouse Cloud users, the hosted MCP server requires no installation:
+**ClickHouse Cloud — zero-install hosted MCP:**
 
 ```bash
 claude mcp add --transport http clickhouse-cloud https://mcp.clickhouse.cloud/mcp
 ```
 
-This uses OAuth for authentication and provides read-only access. No environment variables needed — authentication is handled through the browser.
+Uses OAuth. Read-only. No env vars needed.
 
-**When to use MCP vs CLI:**
+**Self-hosted MCP (any ClickHouse deployment):**
 
-| Scenario | Recommended |
-|----------|-------------|
-| Interactive agent workflows (schema discovery, iterative analysis) | MCP |
-| Batch operations, scripting, automation | CLI |
-| Large result sets (>10K rows) | CLI with `--format JSON` |
-| Agent needs column types and table metadata | MCP |
+```bash
+pip install mcp-clickhouse
+```
 
-**Performance note:** MCP has per-call overhead (~200-500ms for connection setup). For queries returning large result sets, piping CLI output with `--format JSON` to the agent is faster. MCP shines in multi-step workflows where the agent needs to discover schema, refine queries, and iterate — the structured tool interface is worth the per-call cost.
+| Variable | Example | Notes |
+|----------|---------|-------|
+| `CLICKHOUSE_HOST` | `abc123.clickhouse.cloud` | Hostname |
+| `CLICKHOUSE_USER` | `default` | Database user |
+| `CLICKHOUSE_PASSWORD` | `your-password` | Database password |
+| `CLICKHOUSE_SECURE` | `true` | Always `true` for Cloud |
 
-Reference: [ClickHouse MCP Server](https://github.com/ClickHouse/mcp-clickhouse)
+Enable writes: `export CLICKHOUSE_ALLOW_WRITE_ACCESS=true`
+
+**Limitation:** MCP has ~200-500ms overhead per call. For large result sets or batch operations, use CLI.
+
+### Option B: clickhouse-client (batch operations, large results)
+
+Best for scripting, automation, and queries returning >10K rows. Zero per-call overhead.
+
+```bash
+clickhouse client \
+  --host abc123.clickhouse.cloud --port 9440 --secure \
+  --user default --password 'your-password' \
+  --format JSON \
+  --max_execution_time 30 \
+  --query "SELECT * FROM events LIMIT 100" 2>&1
+```
+
+### Where to find connection credentials (ClickHouse Cloud)
+
+1. Go to [console.clickhouse.cloud](https://console.clickhouse.cloud)
+2. Click your service → **Connect** in the left sidebar
+3. The dialog shows hostname, port, user, and a pre-built CLI command
+4. **Reset password** if needed from the same dialog
+
+For self-managed: check `config.xml` or ask your administrator.
+
+### Output format selection
+
+Always specify a format. The default (TabSeparated without headers) is unparseable by agents.
+
+| Format | Tokens (1K rows) | Best For |
+|--------|------------------|----------|
+| `JSON` | High (~20K) | Single queries — includes column types, row count, statistics |
+| `JSONEachRow` | Medium (~15K) | Streaming large results, piping through `jq` |
+| `TabSeparatedWithNames` | Low (~4K) | Minimal tokens, simple tabular data |
+
+Use `JSON` as the default for agent work. Switch to `TabSeparatedWithNames` when result sets are large and context window budget matters.
+
+Reference: [ClickHouse MCP Server](https://github.com/ClickHouse/mcp-clickhouse) · [clickhouse-client](https://clickhouse.com/docs/interfaces/cli) · [Output Formats](https://clickhouse.com/docs/interfaces/formats)

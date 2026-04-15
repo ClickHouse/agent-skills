@@ -10,7 +10,7 @@ npx skills add ClickHouse/clickhouse-agent-skills
 
 ## What's Included
 
-**34 atomic rules** organized by prefix:
+**31 atomic rules** organized by prefix:
 
 | Prefix | Count | Coverage |
 |--------|-------|----------|
@@ -25,10 +25,9 @@ npx skills add ClickHouse/clickhouse-agent-skills
 | `insert-async-*` | 2 | Async inserts, data formats |
 | `insert-mutation-*` | 2 | Mutation avoidance |
 | `insert-optimize-*` | 1 | OPTIMIZE FINAL avoidance |
-| `agent-connect-*` | 3 | MCP, CLI, HTTP connectivity |
-| `agent-discovery-*` | 1 | Schema discovery workflow |
-| `agent-query-*` | 1 | Query safety limits |
-| `agent-format-*` | 1 | Output format selection |
+| `agent-connect-*` | 1 | MCP + CLI connectivity, credentials, output formats |
+| `agent-discovery-*` | 1 | 7-step schema discovery workflow |
+| `agent-query-*` | 1 | Query safety limits, progressive exploration |
 
 ## Trigger Phrases
 
