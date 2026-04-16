@@ -206,7 +206,7 @@ export async function parseRuleFile(filePath: string): Promise<RuleFile> {
     schema: 1,
     query: 2,
     insert: 3,
-    table: 4,
+    agent: 4,
     index: 5,
     materialized: 6,
     cluster: 7,
