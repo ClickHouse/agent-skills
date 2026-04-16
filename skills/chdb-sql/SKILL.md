@@ -1,16 +1,6 @@
 ---
 name: chdb-sql
-description: >-
-  In-process ClickHouse SQL engine for Python — run ClickHouse SQL queries
-  directly on local files, remote databases, and cloud storage without a
-  server. Use when the user wants to write SQL queries against Parquet/CSV/
-  JSON files, use ClickHouse table functions (mysql(), s3(), postgresql(),
-  iceberg(), deltaLake() etc.), build stateful analytical pipelines with
-  Session, use parametrized queries, window functions, or other advanced
-  ClickHouse SQL features. Also use when the user explicitly mentions
-  chdb.query(), ClickHouse SQL syntax, or wants cross-source SQL joins.
-  Do NOT use for pandas-style DataFrame operations — use chdb-datastore
-  instead.
+description: "In-process ClickHouse SQL engine for Python — run ClickHouse SQL queries directly on local files, remote databases, and cloud storage without a server. Use when the user wants to write SQL queries against Parquet/CSV/JSON files, use ClickHouse table functions (mysql(), s3(), postgresql(), iceberg(), deltaLake() etc.), build stateful analytical pipelines with Session, use parametrized queries, window functions, or other advanced ClickHouse SQL features. Also use when the user explicitly mentions chdb.query(), ClickHouse SQL syntax, or wants cross-source SQL joins. Do NOT use for pandas-style DataFrame operations — use chdb-datastore instead."
 license: Apache-2.0
 compatibility: Requires Python 3.9+, macOS or Linux. pip install chdb.
 metadata:
@@ -69,6 +59,11 @@ sess = chs.Session("./analytics_db")   # persistent; Session() for in-memory
 
 sess.query("CREATE TABLE users ENGINE=MergeTree() ORDER BY id AS SELECT * FROM mysql('db:3306','crm','users','root','pass')")
 sess.query("CREATE TABLE events ENGINE=MergeTree() ORDER BY (ts,user_id) AS SELECT * FROM s3('s3://logs/events/*.parquet',NOSIGN)")
+
+# Verify tables were created and data loaded
+sess.query("SELECT count() FROM users", "Pretty").show()
+sess.query("SELECT count() FROM events", "Pretty").show()
+
 sess.query("""
     SELECT u.country, count() AS cnt, uniqExact(e.user_id) AS users
     FROM events e JOIN users u ON e.user_id = u.id

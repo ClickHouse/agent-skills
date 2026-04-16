@@ -1,6 +1,6 @@
 ---
 name: clickhouse-architecture-advisor
-description: MUST USE when designing ClickHouse architectures, selecting between ingestion or modeling patterns, or translating best practices into workload-specific system designs. Complements clickhouse-best-practices with decision frameworks and explicit provenance labels.
+description: "Provides workload-aware architecture decisioning for ClickHouse — selects table engines, designs partition strategies, chooses ingestion patterns (Kafka vs batch vs async inserts), evaluates ReplacingMergeTree vs AggregatingMergeTree trade-offs, and plans data modeling for specific workloads (observability, SIEM, product analytics, IoT, financial services). Use when designing a ClickHouse architecture, selecting between ingestion or modeling patterns, planning schema design, choosing MergeTree variants, building a data pipeline, or evaluating OLAP trade-offs. Complements clickhouse-best-practices (implementation-level rule checks) with higher-level decision frameworks and provenance-labeled recommendations."
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
@@ -33,21 +33,17 @@ Before producing recommendations:
    - `field`
 5. Never present field guidance as official guidance
 6. If a recommendation is uncertain, say so explicitly
+7. Verify each recommendation's provenance by confirming the linked documentation actually supports the claim before presenting
 
 ## Provenance rules
 
-### `official`
-Use this when the recommendation is directly backed by official docs.
+Classify every recommendation with one of these labels:
 
-### `derived`
-Use this when the recommendation is not stated verbatim in docs but follows logically from documented ClickHouse behavior.
+- **`official`** — directly backed by official ClickHouse documentation.
+- **`derived`** — follows logically from documented behavior but is not stated verbatim.
+- **`field`** — experience-based, situational guidance. When using this label, include a disclaimer that the advice is heuristic, link a partially relevant official doc, and explain why the advice depends on workload context.
 
-### `field`
-Use this only for experience-based guidance that may be situational.
-When using `field`, include:
-- a disclaimer that the advice is heuristic
-- a relevant official doc if one partially applies
-- the reason the advice depends on workload context
+Never present `field` guidance as official guidance. If uncertain, say so explicitly.
 
 ## Read these rule files by scenario
 
@@ -109,6 +105,22 @@ high | medium | heuristic
 **Validation**
 - concrete SQL, metric, or smoke test
 ```
+
+## Example: Observability Ingestion Decision
+
+```sql
+-- Validate ingestion throughput after choosing async inserts
+SELECT
+    table,
+    formatReadableSize(sum(bytes_on_disk)) AS size,
+    sum(rows) AS total_rows,
+    count() AS part_count
+FROM system.parts
+WHERE active AND table = 'otel_traces'
+GROUP BY table;
+```
+
+Use queries like this to validate that the chosen architecture meets throughput and storage targets. See `examples/` for full worked examples across workload types.
 
 ## Architecture-specific guidance
 
