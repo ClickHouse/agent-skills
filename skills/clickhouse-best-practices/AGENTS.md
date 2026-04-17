@@ -52,6 +52,10 @@ Comprehensive best practices for ClickHouse database optimization. Covers schema
    - 3.4 [Batch Inserts Appropriately (10K-100K rows)](#34-batch-inserts-appropriately-10k-100k-rows)
    - 3.5 [Use Async Inserts for High-Frequency Small Batches](#35-use-async-inserts-for-high-frequency-small-batches)
    - 3.6 [Use Native Format for Best Insert Performance](#36-use-native-format-for-best-insert-performance)
+4. [Agent Integration](#4-agent-integration) — **CRITICAL**
+   - 4.1 [Apply Safety Limits to Agent-Generated Queries](#41-apply-safety-limits-to-agent-generated-queries)
+   - 4.2 [Connect AI Agents to ClickHouse](#42-connect-ai-agents-to-clickhouse)
+   - 4.3 [Discover Schema Before Querying](#43-discover-schema-before-querying)
 
 ---
 
@@ -1563,6 +1567,352 @@ client.execute("INSERT INTO events VALUES", data, settings={'input_format': 'Nat
 ```
 
 Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
+
+---
+
+## 4. Agent Integration
+
+**Impact: CRITICAL**
+
+AI agents working with ClickHouse need deliberate connection setup, schema discovery, and safe query execution. Agents that skip discovery write queries that ignore the sort key and scan full tables; agents without safety limits run unbounded queries that exhaust compute budgets. Covers MCP/CLI/HTTP connectivity and credential handling, the schema discovery workflow (databases → tables → columns → sort keys → skip indexes → sample → EXPLAIN), and query safety defaults (LIMIT, `max_execution_time`, `EXPLAIN ESTIMATE`).
+
+### 4.1 Apply Safety Limits to Agent-Generated Queries
+
+**Impact: CRITICAL (Unbounded agent queries can scan billions of rows and saturate cluster resources)**
+
+Every agent-generated query must have explicit safety limits. A single unbounded query can scan billions of rows, consume all memory, or run for minutes.
+
+**Non-negotiable rules:**
+
+- ALWAYS use `LIMIT` to cap returned rows (default `LIMIT 1000`)
+
+- ALWAYS bound scan size with `max_rows_to_read` or `max_bytes_to_read` — `LIMIT` alone does not prevent a full scan
+
+- ALWAYS set `max_execution_time` (default 30)
+
+- NEVER run `SELECT *` on large tables without `LIMIT` and scan caps
+
+- NEVER query without filtering on sort key or partition key columns
+
+**Incorrect:**
+
+```sql
+SELECT * FROM events WHERE user_id = '123'
+```
+
+**Correct:**
+
+```sql
+SELECT *
+FROM events
+WHERE event_date >= today() - 7 AND user_id = '123'
+LIMIT 100
+SETTINGS max_execution_time = 30,
+         max_rows_to_read = 1000000000,
+         timeout_before_checking_execution_speed = 0
+```
+
+**Recommended per-query settings:**
+
+| Setting | Recommended | Effect |
+
+|---------|-------------|--------|
+
+| `max_rows_to_read` | 1e9 | Caps rows scanned before materialization — the real guardrail |
+
+| `max_bytes_to_read` | 1e11 | Caps bytes scanned |
+
+| `max_execution_time` | 30 | Interrupts query when projected execution time exceeds N seconds (see `timeout_before_checking_execution_speed`) |
+
+| `timeout_before_checking_execution_speed` | 0 | Makes `max_execution_time` behave as a wall-clock limit (default `10` gives queries 10s of grace before timeouts kick in) |
+
+| `max_estimated_execution_time` | 60 | Rejects queries whose projected runtime exceeds N seconds — kills expensive queries before they start |
+
+| `max_result_rows` | 10000 | Caps output rows |
+
+| `result_overflow_mode` | `'break'` | Returns partial result of ≥ `max_result_rows`, rounded up to the next block boundary (it does not truncate exactly) |
+
+Limits are checked at block boundaries, so actual scans and runtime can overshoot slightly.
+
+**Cloud vs self-hosted defaults that matter:**
+
+| Setting | Self-hosted default | Cloud default |
+
+|---------|---------------------|---------------|
+
+| `max_memory_usage` | `0` (unlimited) | Depends on replica RAM — not unlimited |
+
+| `max_bytes_before_external_group_by` | `0` (no spill) | Half the memory per replica — spills automatically |
+
+| `max_bytes_before_external_sort` | `0` (no spill) | Half the memory per replica — spills automatically |
+
+| `max_rows_to_read` / `max_bytes_to_read` | `0` (unlimited) | `0` (unlimited) — must be set explicitly on both |
+
+| `max_execution_time` | `0` (unlimited) | `0` (unlimited) — must be set explicitly on both |
+
+On self-hosted, GROUP BY and ORDER BY have no automatic memory ceiling — set the `max_bytes_before_external_*` settings explicitly or enforce via profile. On Cloud, GROUP BY / ORDER BY spill to disk automatically and per-query memory is bounded, but scan and execution-time caps are still your job.
+
+**When things go wrong:**
+
+- **Timeout** (`TIMEOUT_EXCEEDED`): Narrow the time range, add sort key filters, run `EXPLAIN ESTIMATE` to check scan size before retrying. Consider `max_estimated_execution_time` to reject expensive queries up front.
+
+- **Memory error** (`MEMORY_LIMIT_EXCEEDED`): Reduce actual memory use — narrow filters, add `LIMIT`, lower GROUP BY cardinality, enable `max_bytes_before_external_group_by` (already on by default in Cloud, off on self-hosted), or split into smaller time windows. Raising `max_memory_usage` only helps if you're authorized and the ceiling is genuinely the problem; *lowering* it makes the error happen sooner, not later.
+
+- **Too many parts** (`TOO_MANY_PARTS`): Back off inserts — merges are behind. Wait and retry.
+
+**Role-level hardening (belt-and-suspenders):**
+
+Per-query `SETTINGS` only applies if the agent remembers to emit it. For production, the primary mechanism should be a [settings profile](https://clickhouse.com/docs/operations/settings/settings-profiles) plus [`readonly=2`](https://clickhouse.com/docs/operations/settings/constraints-on-settings#read-only) on the agent's role, so limits apply even when the agent forgets. Per-query settings are then defense in depth, not the fence.
+
+Per-query limits also don't stop abuse via many small queries — use [quotas](https://clickhouse.com/docs/operations/quotas) to bound requests or scanned bytes per interval.
+
+**Progressive exploration pattern:**
+
+```sql
+-- 1. Count first (cheap)
+SELECT count() FROM events WHERE event_date = today();
+
+-- 2. Small sample (if count is reasonable)
+SELECT * FROM events WHERE event_date = today() LIMIT 10;
+
+-- 3. Full query with LIMIT and scan caps
+SELECT user_id, count() as events
+FROM events
+WHERE event_date = today()
+GROUP BY user_id
+ORDER BY events DESC
+LIMIT 100
+SETTINGS max_execution_time = 30,
+         max_rows_to_read = 1000000000,
+         timeout_before_checking_execution_speed = 0;
+```
+
+Start narrow, widen only if needed:
+
+Reference: [https://clickhouse.com/docs/operations/settings/query-complexity](https://clickhouse.com/docs/operations/settings/query-complexity), [https://clickhouse.com/docs/operations/settings/query-level](https://clickhouse.com/docs/operations/settings/query-level)
+
+### 4.2 Connect AI Agents to ClickHouse
+
+**Impact: HIGH (Proper connection setup eliminates credential-prompting friction and enables structured access)**
+
+Two connection methods, each with a clear use case. Pick one based on your environment.
+
+**Incorrect: prompting for credentials every time**
+
+```python
+# Agent asks the user for host, port, user, password on every session
+# Credentials are hardcoded in the prompt or conversation
+response = client.query("SELECT 1",
+    host="???", user="???", password="???")  # fragile, unsecured
+```
+
+**Correct: MCP or CLI with pre-configured credentials**
+
+```bash
+# MCP: credentials configured once via env vars or OAuth
+claude mcp add --transport http clickhouse-cloud https://mcp.clickhouse.cloud/mcp
+
+# CLI: credentials in a named profile or env vars
+clickhouse client --host abc123.clickhouse.cloud --port 9440 --secure \
+  --user default --password "$CLICKHOUSE_PASSWORD" --format JSON \
+  --query "SELECT 1"
+```
+
+Best for schema discovery, iterative analysis, and multi-step conversations.
+
+**ClickHouse Cloud — zero-install hosted MCP:**
+
+```bash
+claude mcp add --transport http clickhouse-cloud https://mcp.clickhouse.cloud/mcp
+```
+
+Uses OAuth. Read-only. No env vars needed.
+
+**Self-hosted MCP (any ClickHouse deployment):**
+
+```bash
+pip install mcp-clickhouse
+```
+
+| Variable | Example | Notes |
+
+|----------|---------|-------|
+
+| `CLICKHOUSE_HOST` | `abc123.clickhouse.cloud` | Hostname |
+
+| `CLICKHOUSE_USER` | `default` | Database user |
+
+| `CLICKHOUSE_PASSWORD` | `your-password` | Database password |
+
+| `CLICKHOUSE_SECURE` | `true` | Always `true` for Cloud |
+
+Enable writes: `export CLICKHOUSE_ALLOW_WRITE_ACCESS=true`
+
+**Limitations:**
+
+```bash
+curl -s "https://abc123.clickhouse.cloud:8443/" \
+  -H "X-ClickHouse-User: default" \
+  -H "X-ClickHouse-Key: your-password" \
+  --data-binary "SELECT name, engine FROM system.tables WHERE database = 'default' FORMAT JSON"
+```
+
+- MCP has ~200-500ms overhead per call. For large result sets or batch operations, use CLI.
+
+- MCP's `list_tables` may not surface column `COMMENT` annotations — query `system.columns` directly for full schema context (see `agent-discovery-schema`).
+
+**ClickHouse Cloud note:** Services can be idle/sleeping. The first query after inactivity may take 10-20 seconds while the service wakes up. A timeout or `503` on first connection is expected — retry once before treating it as an error.
+
+Best for scripting, automation, and queries returning >10K rows. Zero per-call overhead.
+
+If you have credentials but can't install `clickhouse-client` (lambda, sandbox, web-based agent), use the HTTP interface directly:
+
+Port `8443` is HTTPS. Pass query settings as URL params: `?max_execution_time=30&max_result_rows=10000`.
+
+1. Go to [console.clickhouse.cloud](https://console.clickhouse.cloud)
+
+2. Click your service → **Connect** in the left sidebar
+
+3. The dialog shows hostname, port, user, and a pre-built CLI command
+
+4. **Reset password** if needed from the same dialog
+
+For self-managed: check `config.xml` or ask your administrator.
+
+Always specify a format. The default (TabSeparated without headers) is unparseable by agents.
+
+| Format | Tokens (1K rows) | Best For |
+
+|--------|------------------|----------|
+
+| `JSON` | ~20K | Single queries — includes column types, row count, statistics |
+
+| `JSONCompact` | ~10K | Same metadata as JSON but rows as arrays — good for wide tables |
+
+| `JSONEachRow` | ~15K | Streaming large results, piping through `jq` |
+
+| `TabSeparatedWithNames` | ~4K | Minimal tokens, simple tabular data |
+
+Use `JSON` as the default for agent work. Switch to `TabSeparatedWithNames` when result sets are large and context window budget matters.
+
+Reference: [https://github.com/ClickHouse/mcp-clickhouse](https://github.com/ClickHouse/mcp-clickhouse), [https://clickhouse.com/docs/interfaces/cli](https://clickhouse.com/docs/interfaces/cli), [https://clickhouse.com/docs/interfaces/formats](https://clickhouse.com/docs/interfaces/formats)
+
+### 4.3 Discover Schema Before Querying
+
+**Impact: CRITICAL (Skipping schema discovery leads to full scans, wrong columns, and wasted compute)**
+
+ALWAYS start by understanding the schema. Never assume table or column names. Agents that skip schema discovery write queries that scan unnecessary data, use wrong column names, or miss the sort key — all of which burn compute and return bad results.
+
+**Step 1: List databases**
+
+**Step 2: List tables with size context**
+
+This tells you which tables are large (and therefore expensive to scan carelessly) and what engine each uses.
+
+**Step 3: Get columns, types, and comments**
+
+**Column comments are critical.** If table creators have added `COMMENT` annotations to columns, they are invaluable for understanding semantics (e.g., distinguishing `user_id_hash` from `user_id`). MCP's `list_tables` tool returns column names and types but may not surface comments — always query `system.columns` directly when you need full context.
+
+**Step 4: Understand the sort key**
+
+This is the most important step for writing efficient queries. Filtering on sort key columns allows ClickHouse to skip entire data granules. Filtering on non-key columns forces a full scan.
+
+**Step 5: Check for skipping indexes**
+
+Skipping indexes (`bloom_filter`, `minmax`, `set`, `tokenbf_v1`) tell you which non-sort-key columns already have optimized filter paths. If an index exists on a column, filtering on it is efficient even though it's not in the sort key. Missing this step means you won't know which "non-key" filters are actually fast.
+
+**Step 6: Sample data**
+
+A small sample reveals actual data patterns — date ranges, enum values, null frequency — that inform how to write correct `WHERE` clauses.
+
+**Step 7: Verify query plan before execution**
+
+Before running a potentially expensive query, use `EXPLAIN` to verify it will use indexes efficiently:
+
+Look for:
+
+- **Keys** section showing your sort key columns are being used for filtering
+
+- **Parts** and **Granules** counts — if these are not significantly reduced from the total, your filters aren't pruning effectively
+
+- **Skip** entries showing data skipping index usage
+
+For a quick cost estimate without running the query:
+
+This returns estimated rows and bytes to be read — if the numbers look unreasonably large, refine your filters before executing.
+
+**Example full discovery workflow:**
+
+```sql
+-- 1. What databases exist?
+SELECT name FROM system.databases
+WHERE name NOT IN ('system', 'information_schema', 'INFORMATION_SCHEMA');
+
+-- 2. What's in the target database?
+SELECT name, engine, total_rows,
+       formatReadableSize(total_bytes) as size
+FROM system.tables
+WHERE database = 'analytics'
+ORDER BY total_bytes DESC;
+
+-- 3. What columns does the main table have? (comments reveal semantics)
+SELECT name, type, comment
+FROM system.columns
+WHERE database = 'analytics' AND table = 'events'
+ORDER BY position;
+
+-- 4. What's the sort key? (determines efficient filter columns)
+SELECT sorting_key, primary_key, partition_key
+FROM system.tables
+WHERE database = 'analytics' AND table = 'events';
+
+-- 5. What skipping indexes exist? (optimized non-key filters)
+SELECT name, type_full, expr, granularity
+FROM system.data_skipping_indices
+WHERE database = 'analytics' AND table = 'events';
+
+-- 6. What does the data look like?
+SELECT * FROM analytics.events LIMIT 5;
+
+-- 7. Verify the query plan before running
+EXPLAIN indexes = 1
+SELECT event_type, count()
+FROM analytics.events
+WHERE event_date >= '2024-01-01'
+  AND user_id = 'abc123'
+GROUP BY event_type;
+
+-- 8. NOW execute the query with confidence:
+SELECT event_type, count()
+FROM analytics.events
+WHERE event_date >= '2024-01-01'  -- partition key filter
+  AND user_id = 'abc123'          -- sort key filter
+GROUP BY event_type
+ORDER BY count() DESC
+LIMIT 100;
+```
+
+**Why each step matters:**
+
+| Step | Skipping It Causes |
+
+|------|-------------------|
+
+| List databases | Querying wrong or nonexistent database |
+
+| List tables | Missing the right table, querying the wrong one |
+
+| Get columns + comments | Wrong column names, misunderstood semantics |
+
+| Check sort key | Full table scans instead of index-pruned reads |
+
+| Check skip indexes | Missing optimized filter paths on non-key columns |
+
+| Sample data | Wrong assumptions about date ranges, nulls, enums |
+
+| Verify EXPLAIN | Expensive queries that could have been caught before execution |
+
+Reference: [https://clickhouse.com/docs/operations/system-tables](https://clickhouse.com/docs/operations/system-tables)
 
 ---
 
