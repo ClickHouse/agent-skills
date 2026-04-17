@@ -9,7 +9,7 @@ tags: [agent, schema, discovery, workflow]
 
 **Impact: CRITICAL**
 
-ALWAYS start by understanding the schema. Never assume table or column names. Agents that skip schema discovery write queries that scan unnecessary data, use wrong column names, or miss the sort key — all of which burn compute and return bad results.
+ALWAYS start by understanding the schema. Never assume table or column names. Agents that skip schema discovery write queries that scan unnecessary data, use wrong column names, or miss the sort key — all of which burn compute and return bad results. The below queries are examples of how you access the schema for tables. Step 1 is a literal query. The rest are exemplars.
 
 **Step 1: List databases**
 
