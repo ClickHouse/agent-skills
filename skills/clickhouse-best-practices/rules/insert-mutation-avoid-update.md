@@ -1,7 +1,7 @@
 ---
 title: Avoid ALTER TABLE UPDATE
 impact: CRITICAL
-impactDescription: "Mutations rewrite entire parts; use ReplacingMergeTree instead"
+impactDescription: "Use lightweight UPDATE or ReplacingMergeTree instead"
 tags: [insert, mutation, UPDATE, ReplacingMergeTree]
 ---
 
@@ -9,7 +9,7 @@ tags: [insert, mutation, UPDATE, ReplacingMergeTree]
 
 **Impact: CRITICAL**
 
-`ALTER TABLE UPDATE` is a mutation - an asynchronous background process that rewrites entire data parts affected by the change. This is extremely expensive for frequent or large-scale operations.
+`ALTER TABLE UPDATE` is a mutation that rewrites entire data parts affected by the change. Use alternatives like lightweight UPDATE or ReplacingMergeTree.
 
 **Why mutations are problematic:**
 - **Write amplification:** Rewrite complete parts even for minor changes
@@ -17,7 +17,7 @@ tags: [insert, mutation, UPDATE, ReplacingMergeTree]
 - **No rollback:** Cannot be rolled back after submission
 - **Inconsistent reads:** SELECT may read mix of mutated and unmutated parts
 
-**Incorrect (mutation for updates):**
+**Incorrect (mutation update):**
 
 ```sql
 -- Rewrites potentially huge amounts of data
@@ -30,10 +30,9 @@ WHERE product_id = 123;
 -- If product exists across 100 parts, rewrites ALL 100 parts
 ```
 
-**Correct (ReplacingMergeTree):**
+**Correct - ReplacingMergeTree:**
 
 ```sql
--- Table design for updates
 CREATE TABLE users (
     user_id UInt64,
     name String,
@@ -54,5 +53,22 @@ SELECT * FROM users FINAL WHERE user_id = 123;
 SELECT user_id, argMax(status, updated_at) as status
 FROM users GROUP BY user_id;
 ```
+
+**Correct - Lightweight Updates (25.7+):**
+
+```sql
+-- Writes a patch, doesn't rewrite parts immediately
+UPDATE users SET status = 'inactive'
+WHERE last_login < now() - INTERVAL 90 DAY;
+-- Patches are applied during normal merges
+```
+
+**Update strategy comparison:**
+
+| Method | Speed | When to Use |
+|--------|-------|-------------|
+| ALTER UPDATE | Slow | Rare corrections only |
+| ReplacingMergeTree | Fast | Frequent updates |
+| Lightweight UPDATE | Medium | Occasional updates |
 
 Reference: [Avoid Mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
