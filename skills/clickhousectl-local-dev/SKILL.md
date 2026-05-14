@@ -4,7 +4,7 @@ description: Use when a user wants to build an application with ClickHouse, set 
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Local ClickHouse Development Setup
@@ -44,6 +44,8 @@ This installs `clickhousectl` to `~/.local/bin/clickhousectl` and creates a `chc
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
+Once installed, `clickhousectl skills` can be used to install the latest ClickHouse Agent Skills.
+
 ---
 
 ## Step 2: Install ClickHouse
@@ -58,8 +60,8 @@ This downloads the ClickHouse binary to `~/.clickhouse/versions/`. The binary is
 
 **Alternative version specifiers** (use if the user has a specific need):
 - `lts` — latest long-term support release
-- `25.12` — latest patch of a specific minor version
-- `25.12.5.44` — exact version
+- `26.4` — latest patch of a specific minor version
+- `26.4.2.10` — exact version
 
 Set the installed version as the default:
 
@@ -97,7 +99,7 @@ clickhouse/
 clickhousectl local server start --name <name>
 ```
 
-This starts a ClickHouse server in the background. Server data is stored in `.clickhouse/servers/<anem>/data/` within the project directory.
+This starts a ClickHouse server in the background.
 
 **To check running servers and see their exposed ports:**
 
