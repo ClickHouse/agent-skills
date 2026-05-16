@@ -1,5 +1,5 @@
 ---
-title: Choose the right enrichment path: JOIN, dictionary, denormalization, or precomputed enrichment
+title: "Choose the right enrichment path: JOIN, dictionary, denormalization, or precomputed enrichment"
 impact: CRITICAL
 tags:
   - joins
