@@ -1,0 +1,37 @@
+{
+  "name": "clickhouse-best-practices",
+  "version": "0.3.0",
+  "description": "28 best practice rules for ClickHouse schema design, query optimization, and data ingestion - prioritized by impact.",
+  "author": {
+    "name": "ClickHouse Inc",
+    "url": "https://clickhouse.com"
+  },
+  "homepage": "https://clickhouse.ai",
+  "repository": "https://github.com/ClickHouse/agent-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "database",
+    "query-optimization",
+    "schema-design",
+    "best-practices",
+    "data-ingestion"
+  ],
+  "skills": "./",
+  "interface": {
+    "displayName": "ClickHouse Best Practices",
+    "shortDescription": "Review ClickHouse schemas, queries, and ingestion against best-practice rules.",
+    "longDescription": "Use ClickHouse Best Practices to review schema design, query optimization, partitioning, JOINs, data types, ingestion, mutations, materialized views, and related ClickHouse design decisions against curated best-practice rules.",
+    "developerName": "ClickHouse Inc",
+    "category": "Database",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://clickhouse.com",
+    "defaultPrompt": [
+      "Review this ClickHouse schema against best practices.",
+      "Check this ClickHouse query for optimization issues."
+    ],
+    "brandColor": "#FFCC01"
+  }
+}

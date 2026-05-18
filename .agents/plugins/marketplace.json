@@ -1,0 +1,32 @@
+{
+  "name": "clickhouse-agent-skills",
+  "interface": {
+    "displayName": "ClickHouse Agent Skills"
+  },
+  "plugins": [
+    {
+      "name": "clickhouse-best-practices",
+      "source": {
+        "source": "local",
+        "path": "./skills/clickhouse-best-practices"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Database"
+    },
+    {
+      "name": "clickhouse-architecture-advisor",
+      "source": {
+        "source": "local",
+        "path": "./skills/clickhouse-architecture-advisor"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Database"
+    }
+  ]
+}

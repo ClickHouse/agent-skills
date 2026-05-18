@@ -1,0 +1,36 @@
+{
+  "name": "clickhouse-architecture-advisor",
+  "version": "0.1.0",
+  "description": "Workload-aware architecture decision skill for ClickHouse - ingestion strategies, partitioning, enrichment, upsert patterns, and pre-aggregation with explicit official/derived/field provenance.",
+  "author": {
+    "name": "ClickHouse Inc",
+    "url": "https://clickhouse.com"
+  },
+  "homepage": "https://clickhouse.ai",
+  "repository": "https://github.com/ClickHouse/agent-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "database",
+    "architecture",
+    "design",
+    "advisor"
+  ],
+  "skills": "./",
+  "interface": {
+    "displayName": "ClickHouse Architecture Advisor",
+    "shortDescription": "Design ClickHouse architectures with workload-aware tradeoffs.",
+    "longDescription": "Use ClickHouse Architecture Advisor for workload-aware system design across ingestion strategy, time-series partitioning, enrichment joins, upserts, pre-aggregation, and other ClickHouse architecture choices with explicit provenance labels.",
+    "developerName": "ClickHouse Inc",
+    "category": "Database",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://clickhouse.com",
+    "defaultPrompt": [
+      "Design a ClickHouse architecture for this workload.",
+      "Choose ingestion and modeling patterns for ClickHouse."
+    ],
+    "brandColor": "#FFCC01"
+  }
+}
