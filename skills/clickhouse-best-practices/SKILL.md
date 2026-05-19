@@ -1,15 +1,15 @@
 ---
 name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 28 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 31 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, and data ingestion. Contains 28 rules across 3 main categories (schema, query, insert), prioritized by impact.
+Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 31 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
 
 > **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
@@ -25,9 +25,30 @@ Comprehensive guidance for ClickHouse covering schema design, query optimization
 
 **Why rules take priority:** ClickHouse has specific behaviors (columnar storage, sparse indexes, merge tree mechanics) where general database intuition can be misleading. The rules encode validated, ClickHouse-specific guidance.
 
-### For Formal Reviews
+---
 
-When performing a formal review of schemas, queries, or data ingestion:
+## Agent Connectivity & Query Workflow
+
+Before querying ClickHouse, agents must establish a connection and follow the discovery workflow:
+
+1. `rules/agent-connect-mcp.md` - Connection setup (MCP + CLI), credential discovery, output format selection
+2. `rules/agent-discovery-schema.md` - **CRITICAL**: 7-step schema discovery workflow
+3. `rules/agent-query-safety.md` - **CRITICAL**: LIMIT, timeouts, progressive exploration
+
+**Every agent session should follow this sequence:**
+
+1. **Connect** — establish connection via MCP or CLI (see `agent-connect-mcp`)
+2. **Discover** — databases → tables → columns + comments → sort keys → skip indexes → sample → EXPLAIN
+3. **Plan** — use sort key and skip index knowledge to write efficient WHERE clauses
+4. **Execute** — run queries with LIMIT and timeouts
+5. **Recover** — on timeout/memory errors, narrow filters and retry (see `agent-query-safety`)
+
+### Subagent architecture notes
+
+If your system dispatches ClickHouse tasks to specialized subagents:
+- **Schema discovery + query execution**: any model — the steps are procedural
+- **EXPLAIN analysis + query optimization**: benefits from mid-tier reasoning
+- **Schema design review against all 28 rules**: benefits from mid-tier reasoning
 
 ---
 
@@ -130,6 +151,9 @@ Structure your response as follows:
 | 9 | Async Inserts | HIGH | `insert-async-` | 2 |
 | 10 | OPTIMIZE Avoidance | HIGH | `insert-optimize-` | 1 |
 | 11 | JSON Usage | MEDIUM | `schema-json-` | 1 |
+| 12 | Agent Schema Discovery | CRITICAL | `agent-discovery-` | 1 |
+| 13 | Agent Query Safety | CRITICAL | `agent-query-` | 1 |
+| 14 | Agent Connectivity + Formats | HIGH | `agent-connect-` | 1 |
 
 ---
 
@@ -196,11 +220,27 @@ Structure your response as follows:
 
 - `insert-optimize-avoid-final` - Let background merges work
 
+### Agent Integration - Discovery (CRITICAL)
+
+- `agent-discovery-schema` - Always discover schema before querying
+
+### Agent Integration - Safety (CRITICAL)
+
+- `agent-query-safety` - LIMIT, timeouts, progressive exploration
+
+### Agent Integration - Connectivity + Formats (HIGH)
+
+- `agent-connect-mcp` - MCP + CLI setup, credential discovery, output format selection
+
 ---
 
 ## When to Apply
 
 This skill activates when you encounter:
+
+- AI agent connecting to ClickHouse (MCP, CLI, HTTP)
+- Agent workflow design for ClickHouse
+- Schema discovery or exploration requests
 
 - `CREATE TABLE` statements
 - `ALTER TABLE` modifications

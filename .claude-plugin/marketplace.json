@@ -47,6 +47,26 @@
         "advisor"
       ],
       "category": "database"
+    },
+    {
+      "name": "clickhouse-js-node-troubleshooting",
+      "source": "./skills/clickhouse-js-node-troubleshooting/",
+      "description": "Troubleshooting guide for the ClickHouse Node.js client (@clickhouse/client) — socket hang-up/ECONNRESET, Keep-Alive, data type mismatches, read-only users, proxy/pathname URLs, TLS, compression, logging, and query parameters",
+      "version": "0.1.0",
+      "author": {
+        "name": "ClickHouse Inc"
+      },
+      "homepage": "https://clickhouse.ai",
+      "repository": "https://github.com/ClickHouse/agent-skills",
+      "license": "Apache-2.0",
+      "keywords": [
+        "clickhouse",
+        "nodejs",
+        "javascript",
+        "client",
+        "troubleshooting"
+      ],
+      "category": "database"
     }
   ]
 }

@@ -4,7 +4,7 @@ description: Use when a user wants to deploy ClickHouse to the cloud, go to prod
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Deploy to ClickHouse Cloud
@@ -54,41 +54,29 @@ If not found, install it:
 curl -fsSL https://clickhouse.com/cli | sh
 ```
 
-Now authenticate. There are two options — choose based on the situation:
+Authenticate `clickhousectl` with a ClickHouse Cloud API key.
 
-> **Important: OAuth login is read-only.** Browser login (Option A) grants read-only access — you can list organizations, services, and query existing services, but you **cannot** create, modify, or delete services. Any destructive or mutating cloud operation (service creation, deletion, scaling, etc.) **requires API key authentication** (Option B). If this workflow involves creating or changing cloud resources, you must use Option B.
+### Create an API key
 
-### Option A: Browser login (read-only access)
+Guide the user through creating one in the ClickHouse Cloud console:
 
-Use this when a human is available to open a browser and you only need to inspect existing cloud resources (list orgs, list services, query data). It uses OAuth device flow — no API keys needed.
+> 1. Click the **gear icon** (Settings) in the left sidebar
+> 2. Go to **API Keys**
+> 3. Click **Create API Key**
+> 4. Give it a name (e.g., "clickhousectl")
+> 5. Select the **Admin** role for the key. Admin is needed because `cloud service query` auto-provisions a per-service query endpoint API key on first use, which requires permission to create keys. Developer-scoped keys can manage services but may not be able to complete the auto-provisioning step.
+> 6. Click **Generate API Key**
+> 7. **Copy both the Key ID and the Key Secret** — the secret is only shown once
 
-Instruct the user to run:
+### Authenticate clickhousectl with the key
 
-```bash
-clickhousectl cloud login
-```
-
-This prints a URL and a code. The user opens the URL in their browser, confirms the code, and logs in with their ClickHouse Cloud account. The CLI automatically receives credentials once the browser flow completes.
-
-This is sufficient for steps that only read data (e.g., `cloud org list`, `cloud service get`, `cloud service client`). For any step that creates or modifies resources, switch to API key auth.
-
-### Option B: API key auth (required for destructive actions)
-
-**Use this option when creating, modifying, or deleting cloud resources** (e.g., `cloud service create`, `cloud service delete`). Also use this for headless/CI environments where no browser is available. Both `--api-key` and `--api-secret` are **required** — if the user provides one without the other, tell them both are needed.
+Ask the user to **open a new terminal tab in the same working directory** and run the login command there with their Key ID and Secret — this keeps the secret out of the chat session. Tell them to come back and let you know once it's done.
 
 ```bash
 clickhousectl cloud login --api-key <key> --api-secret <secret>
 ```
 
-If the user doesn't have API keys yet, guide them to create one:
-
-> In the ClickHouse Cloud console:
-> 1. Click the **gear icon** (Settings) in the left sidebar
-> 2. Go to **API Keys**
-> 3. Click **Create API Key**
-> 4. Give it a name (e.g., "cli") and select the **Admin** role
-> 5. Click **Generate API Key**
-> 6. **Copy both the Key ID and the Key Secret** — the secret is only shown once
+Both `--api-key` and `--api-secret` are required — if the user only has one, tell them both are needed.
 
 ---
 
@@ -104,22 +92,19 @@ This should return the user's organization.
 
 ## Step 3: Create a cloud service
 
-> **Requires API key auth.** Service creation is a mutating operation. If you authenticated with browser login (Option A) in Step 2, you must re-authenticate with API key auth (Option B) before proceeding.
-
 Create a new ClickHouse Cloud service:
 
 ```bash
 clickhousectl cloud service create --name <service-name>
 ```
 
-**The output includes the service ID and default user password** — note it for subsequent commands.
+From the output, add the HTTPS host and port to `.env` as `CLICKHOUSE_HOST` and `CLICKHOUSE_PORT`. Make sure `.env` is gitignored.
 
-**Wait for the service to be ready.** After creation, the service takes a moment to provision. Check its status:
+Then poll until the service state is `running`:
 
 ```bash
 clickhousectl cloud service get <service-id>
 ```
-You can grep the "state" field to see if it is "running".
 
 ---
 
@@ -127,12 +112,12 @@ You can grep the "state" field to see if it is "running".
 
 If the user has local table definitions (e.g., from using the `clickhousectl-local-dev` skill), migrate them to the cloud service.
 
-Use `cloud service client` to run queries against the cloud service — it looks up the endpoint, port, and TLS settings automatically. You just need the service name (or `--id`) and the password from step 3.
+Use `cloud service query` to run SQL against the cloud service over HTTP. Just pass the service name (or `--id`).
 
 **Read the local schema files** from `clickhouse/tables/` and apply each one to the cloud service:
 
 ```bash
-clickhousectl cloud service client --name <service-name> \
+clickhousectl cloud service query --name <service-name> \
   --queries-file clickhouse/tables/<table>.sql
 ```
 
@@ -141,11 +126,11 @@ Apply them in dependency order — tables referenced by materialized views shoul
 **Also apply materialized views** if they exist:
 
 ```bash
-clickhousectl cloud service client --name <service-name> \
+clickhousectl cloud service query --name <service-name> \
   --queries-file clickhouse/materialized_views/<view>.sql
 ```
 
-The `--user` flag defaults to `default`. If the user has a different database user, pass `--user <username>`.
+To target a specific database, pass `--database <name>`.
 
 ---
 
@@ -154,71 +139,53 @@ The `--user` flag defaults to `default`. If the user has a different database us
 Connect to the cloud service and confirm tables exist:
 
 ```bash
-clickhousectl cloud service client --name <service-name> --query "SHOW TABLES"
+clickhousectl cloud service query --name <service-name> --query "SHOW TABLES"
 ```
 
 Run a test query to confirm the schema is correct:
 
 ```bash
-clickhousectl cloud service client --name <service-name> --query "DESCRIBE TABLE <table-name>"
+clickhousectl cloud service query --name <service-name> --query "DESCRIBE TABLE <table-name>"
 ```
 
 ---
 
-## Step 6: Update application config
+## Step 6: Create a dedicated user for the application
 
-Retrieve the service endpoint for the user's application config:
+The `default` user has full admin rights and should not be used by the application. Create a dedicated user scoped to the schema deployed in Step 4.
+
+Generate a strong random password and append the credentials to `.env` **before** creating the user, so the password is persisted even if a subsequent step fails:
 
 ```bash
-clickhousectl cloud service get <service-id>
+PASSWORD=$(openssl rand -base64 32)
+echo "CLICKHOUSE_USER=app_user" >> .env
+echo "CLICKHOUSE_PASSWORD=$PASSWORD" >> .env
 ```
 
-Provide the user with the connection details:
+Then create the user and grant the minimum permissions the app needs. Replace `<database>` with the database the schema lives in (often `default`):
 
-- **Host:** from the service `get` output
-- **Port:** `8443` for HTTPS / `9440` for native TLS
-- **User:** `default`
-- **Password:** the password from step 3 (service creation)
-- **SSL/TLS:** required (always enabled on Cloud)
+```bash
+clickhousectl cloud service query --name <service-name> --query \
+  "CREATE USER app_user IDENTIFIED BY '$PASSWORD'"
 
-**Example connection strings** (adapt to the user's language/framework):
-
-**Python (clickhouse-connect):**
-```python
-import clickhouse_connect
-
-client = clickhouse_connect.get_client(
-    host='<cloud-host>',
-    port=8443,
-    username='default',
-    password='<password>',
-    secure=True
-)
+clickhousectl cloud service query --name <service-name> --query \
+  "GRANT SELECT, INSERT ON <database>.* TO app_user"
 ```
 
-**Node.js (@clickhouse/client):**
-```javascript
-import { createClient } from '@clickhouse/client'
+Adjust the grants to fit the app:
 
-const client = createClient({
-  url: 'https://<cloud-host>:8443',
-  username: 'default',
-  password: '<password>',
-})
+- Read-only app → drop `INSERT`
+- Needs to create/drop its own tables → also grant `CREATE TABLE, DROP TABLE` on the database (but prefer running migrations as the admin user instead)
+- Multiple databases → repeat the `GRANT` per database, or scope per table with `ON <database>.<table>`
+
+Verify the user exists and has the expected grants:
+
+```bash
+clickhousectl cloud service query --name <service-name> --query "SHOW GRANTS FOR app_user"
 ```
 
-**Go (clickhouse-go):**
-```go
-conn, err := clickhouse.Open(&clickhouse.Options{
-    Addr: []string{"<cloud-host>:9440"},
-    Auth: clickhouse.Auth{
-        Username: "default",
-        Password: "<password>",
-    },
-    TLS: &tls.Config{},
-})
-```
+ClickHouse cannot reveal the password later, so if `.env` is lost, the user must reset the password via `ALTER USER app_user IDENTIFIED BY '<new>'`.
 
-Suggest the user store the password in an environment variable or secrets manager rather than hardcoding it.
+---
 
-Suggest the user should not use the default user in production. A user should be created just for their app.
+The application can now use the credentials in `.env` to connect to ClickHouse Cloud.

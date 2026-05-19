@@ -1,0 +1,10 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "April 2026",
+  "abstract": "Troubleshooting guide for the ClickHouse Node.js client (@clickhouse/client). Covers common failure modes including socket hang-up/ECONNRESET, Keep-Alive misconfiguration, data type mismatches, read-only user restrictions, proxy/pathname URL confusion, TLS certificate errors, compression issues, logging setup, and query parameter interpolation.",
+  "references": [
+    "https://clickhouse.com/docs/integrations/javascript",
+    "https://github.com/ClickHouse/clickhouse-js"
+  ]
+}

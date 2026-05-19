@@ -75,6 +75,14 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* �
 
 **For agents:** The skill activates during architecture design sessions — when choosing ingestion patterns, designing time-series schemas, selecting enrichment strategies, or handling mutable state.
 
+### ClickHouse JS Node Troubleshooting
+
+**Troubleshooting guide** for the ClickHouse Node.js client (`@clickhouse/client`). Covers common failure modes including socket hang-up / `ECONNRESET`, Keep-Alive misconfiguration, data type mismatches, read-only user restrictions, proxy / pathname URL confusion, TLS certificate errors, compression issues, logging setup, and query parameter interpolation.
+
+**Location:** [`skills/clickhouse-js-node-troubleshooting/`](./skills/clickhouse-js-node-troubleshooting/)
+
+**For agents:** The skill activates when users report errors, unexpected behavior, or configuration questions involving the ClickHouse Node.js client — including vague symptoms like "my inserts keep failing" or "connection drops randomly" in a Node.js context. Not used for browser/Web client issues.
+
 ### chdb DataStore
 
 **Pandas-compatible API** for chdb — drop-in pandas replacement backed by ClickHouse. Write `import chdb.datastore as pd` and use the same pandas API, 10-100x faster. Supports 16+ data sources (MySQL, PostgreSQL, S3, MongoDB, Iceberg, Delta Lake, etc.) with cross-source joins.
