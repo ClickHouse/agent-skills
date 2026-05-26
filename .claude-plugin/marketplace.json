@@ -67,6 +67,48 @@
         "troubleshooting"
       ],
       "category": "database"
+    },
+    {
+      "name": "chdb-datastore",
+      "source": "./skills/chdb-datastore/",
+      "description": "Pandas-compatible DataStore API for chDB — same pandas API backed by ClickHouse for 10-100x faster filter/group/aggregate/join, with built-in readers for S3, MySQL, PostgreSQL, MongoDB, ClickHouse Cloud, Iceberg, and Delta Lake and cross-source DataFrame joins",
+      "version": "4.1.0",
+      "author": {
+        "name": "ClickHouse Inc"
+      },
+      "homepage": "https://clickhouse.ai",
+      "repository": "https://github.com/ClickHouse/agent-skills",
+      "license": "Apache-2.0",
+      "keywords": [
+        "chdb",
+        "clickhouse",
+        "pandas",
+        "dataframe",
+        "parquet",
+        "analytics"
+      ],
+      "category": "database"
+    },
+    {
+      "name": "chdb-sql",
+      "source": "./skills/chdb-sql/",
+      "description": "Embedded ClickHouse SQL engine for Python via chDB — run analytical SQL on parquet/csv/json files, URLs, S3, and remote databases (Postgres, MySQL, MongoDB, ClickHouse Cloud, Iceberg, Delta Lake) with Session for stateful pipelines, parametrized queries, UDFs, and cross-source joins",
+      "version": "4.1.0",
+      "author": {
+        "name": "ClickHouse Inc"
+      },
+      "homepage": "https://clickhouse.ai",
+      "repository": "https://github.com/ClickHouse/agent-skills",
+      "license": "Apache-2.0",
+      "keywords": [
+        "chdb",
+        "clickhouse",
+        "sql",
+        "analytics",
+        "parquet",
+        "embedded"
+      ],
+      "category": "database"
     }
   ]
 }
