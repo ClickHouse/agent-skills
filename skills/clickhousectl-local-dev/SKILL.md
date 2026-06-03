@@ -48,26 +48,17 @@ Once installed, `clickhousectl skills` can be used to install the latest ClickHo
 
 ---
 
-## Step 2: Install ClickHouse
+## Step 2: Install ClickHouse and set the default
 
-Install the latest stable ClickHouse version:
-
-```bash
-clickhousectl local install stable
-```
-
-This downloads the ClickHouse binary to `~/.clickhouse/versions/`. The binary is shared across projects so it only needs to be downloaded once.
-
-**Alternative version specifiers** (use if the user has a specific need):
-- `lts` — latest long-term support release
-- `26.4` — latest patch of a specific minor version
-- `26.4.2.10` — exact version
-
-Set the installed version as the default:
+Install the latest ClickHouse version and set it as the system default:
 
 ```bash
-clickhousectl local use stable
+clickhousectl local use latest
 ```
+
+This installs ClickHouse, sets it as the default version used by `clickhousectl local` commands, and symlinks `~/.local/bin/clickhouse` to the binary, putting `clickhouse` on your PATH (meaning you can invoke `clickhouse` directly, e.g. `clickhouse client` if needed).
+
+You can use other version specifiers like `stable`, `26.4`, `26.4.2.10` when needed.
 
 ---
 
