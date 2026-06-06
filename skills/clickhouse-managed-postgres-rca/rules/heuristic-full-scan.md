@@ -1,3 +1,13 @@
+---
+title: Diagnose a read-path full scan from blocks-touched-per-row, recommend an index without overreaching
+impact: HIGH
+tags:
+  - heuristic
+  - full-scan
+  - indexing
+  - read-path
+---
+
 # Heuristic: full scan
 
 **Use when** the triage decision tree pointed here: read-heavy

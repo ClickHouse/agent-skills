@@ -123,3 +123,8 @@ and long-term follow-ups.
 Follow `rules/recommend-only.md`. Never run DDL. Never call
 `pg_cancel_backend` or `pg_terminate_backend`. Write the
 recommendation, explain why, and let the human apply it.
+
+## Full Compiled Document
+
+For the complete guide with every rule expanded in a single
+context load: `AGENTS.md`.

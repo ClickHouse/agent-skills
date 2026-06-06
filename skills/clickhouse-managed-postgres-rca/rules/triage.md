@@ -1,3 +1,13 @@
+---
+title: Match the combined Prometheus and slow-query signal to a heuristic, or surface and ask
+impact: CRITICAL
+tags:
+  - triage
+  - decision-tree
+  - routing
+  - rca
+---
+
 # Triage
 
 A decision tree for picking the right heuristic. Run this

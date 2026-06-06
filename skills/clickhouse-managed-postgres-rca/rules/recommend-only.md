@@ -1,3 +1,13 @@
+---
+title: Never mutate the instance — write the fix, explain it, and let a human apply it
+impact: CRITICAL
+tags:
+  - safety
+  - recommend-only
+  - guardrail
+  - boundary
+---
+
 # Recommend-only boundary
 
 This skill never executes mutations on the Postgres instance.

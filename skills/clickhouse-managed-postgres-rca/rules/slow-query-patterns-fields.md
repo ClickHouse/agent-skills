@@ -1,3 +1,14 @@
+---
+title: Pull per-pattern evidence from the Slow Query Patterns API and filter out internal probes
+impact: CRITICAL
+tags:
+  - slow-query-patterns
+  - evidence
+  - fields
+  - beta-api
+  - rca
+---
+
 # Slow Query Patterns API
 
 ## Endpoint (resolve from OpenAPI)

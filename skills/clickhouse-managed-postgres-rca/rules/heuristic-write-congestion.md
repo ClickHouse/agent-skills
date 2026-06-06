@@ -1,3 +1,14 @@
+---
+title: Diagnose write-path congestion across deadlocks, slow writes, and high error rate sub-patterns
+impact: HIGH
+tags:
+  - heuristic
+  - write-path
+  - deadlocks
+  - wal
+  - rollbacks
+---
+
 # Heuristic: write-path congestion
 
 **Use when** the triage decision tree pointed here: top

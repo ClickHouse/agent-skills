@@ -1,3 +1,13 @@
+---
+title: Diagnose an application-side N+1 / hot loop from high call count with low per-call latency
+impact: HIGH
+tags:
+  - heuristic
+  - hot-loop
+  - n-plus-one
+  - application
+---
+
 # Heuristic: hot loop (N+1)
 
 **Use when** the triage decision tree pointed here: one pattern

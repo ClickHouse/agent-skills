@@ -1,3 +1,14 @@
+---
+title: Resolve live API paths and a semantic role map from the OpenAPI spec before any request
+impact: CRITICAL
+tags:
+  - openapi
+  - discovery
+  - role-map
+  - beta-api
+  - caching
+---
+
 # OpenAPI discovery
 
 Both endpoints this skill uses are **Beta**. Field names and

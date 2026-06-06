@@ -1,3 +1,14 @@
+---
+title: Scrape the Prometheus endpoint for system-level gauges, opt into a second scrape only for counter deltas
+impact: HIGH
+tags:
+  - prometheus
+  - metrics
+  - gauges
+  - scrape
+  - rca
+---
+
 # Prometheus scrape
 
 ## How
@@ -42,7 +53,14 @@ Only do a second scrape when Step 4 triage hints at write
 congestion or you need a signal that's nowhere else:
 
 - `PostgresServer_Deadlocks_Total` — non-zero delta means
-  serializable conflicts; not surfaced in Slow Query Patterns.
+  lock-cycle deadlocks: Postgres detected a circular lock wait
+  and aborted one transaction to break it. This is **not** the
+  same as a serialization conflict (SQLSTATE 40001 under
+  `SERIALIZABLE` / `REPEATABLE READ`) — different mechanism,
+  different fix (consistent lock ordering vs. retry/isolation
+  review). See sub-patterns A and C in
+  `heuristic-write-congestion.md`. Not surfaced in Slow Query
+  Patterns.
 - `PostgresServer_TransactionsRolledBack_Total` vs
   `_Committed_Total` — rollback rate; also not directly in
   Slow Query Patterns.

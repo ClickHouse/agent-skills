@@ -1,3 +1,13 @@
+---
+title: Structure every RCA response as symptom, evidence, hypothesis, recommendation, and follow-ups
+impact: MEDIUM
+tags:
+  - output
+  - reporting
+  - template
+  - rca
+---
+
 # Output template
 
 Every RCA response uses this structure. Do not deviate.
