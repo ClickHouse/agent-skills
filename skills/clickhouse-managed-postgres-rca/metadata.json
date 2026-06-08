@@ -1,0 +1,12 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "May 2026",
+  "abstract": "RCA workflow for ClickHouse-managed Postgres. Walks an agent through symptom detection via the Prometheus endpoint, per-digest evidence via the Slow Query Patterns API, a triage step that matches the signal to one of a small heuristic library (full scan, hot loop, write congestion at v0.1), and a structured recommendation. Recommend-only — never executes DDL or kills queries.",
+  "references": [
+    "https://clickhouse.com/docs/cloud/managed-postgres/monitoring/metrics",
+    "https://clickhouse.com/docs/cloud/managed-postgres/monitoring/query-insights",
+    "https://clickhouse.com/docs/cloud/manage/api/swagger#tag/Postgres/operation/slowQueryPatternsGetList",
+    "https://clickhouse.com/docs/cloud/manage/api/swagger#tag/Prometheus/operation/postgresInstancePrometheusGet"
+  ]
+}
