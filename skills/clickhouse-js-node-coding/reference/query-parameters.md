@@ -26,10 +26,10 @@ ClickHouse uses `{name: Type}` placeholders — **not** `$1`, `?`, or `:name`.
 
 ```ts
 await client.query({
-  query: 'SELECT plus({a: Int32}, {b: Int32})',
-  format: 'JSONEachRow',
+  query: "SELECT plus({a: Int32}, {b: Int32})",
+  format: "JSONEachRow",
   query_params: { a: 10, b: 20 },
-})
+});
 ```
 
 The `Type` must be a valid ClickHouse type (`Int32`, `String`, `Date`,
@@ -41,16 +41,16 @@ Interpolating user input into the SQL string bypasses server-side escaping
 and opens the door to SQL injection:
 
 ```ts
-const userId = req.params.id
+const userId = req.params.id;
 
 // ❌ Dangerous — never do this with user-controlled values
-await client.query({ query: `SELECT * FROM users WHERE id = ${userId}` })
+await client.query({ query: `SELECT * FROM users WHERE id = ${userId}` });
 
 // ✓ Safe — parameterized
 await client.query({
-  query: 'SELECT * FROM users WHERE id = {id: UInt32}',
+  query: "SELECT * FROM users WHERE id = {id: UInt32}",
   query_params: { id: userId },
-})
+});
 ```
 
 This is the most common mistake for users coming from PostgreSQL/MySQL. Call
@@ -59,7 +59,7 @@ it out explicitly when the user shows template-literal interpolation.
 ## Common types
 
 ```ts
-import { TupleParam } from '@clickhouse/client'
+import { TupleParam } from "@clickhouse/client";
 
 await client.query({
   query: `
@@ -79,27 +79,27 @@ await client.query({
       {var_ipv4: IPv4}                     AS var_ipv4,
       {var_null: Nullable(String)}         AS var_null
   `,
-  format: 'JSONEachRow',
+  format: "JSONEachRow",
   query_params: {
     var_int: 10,
-    var_float: '10.557',
-    var_str: 'hello',
+    var_float: "10.557",
+    var_str: "hello",
     var_array: [42, 144],
-    var_tuple: new TupleParam([42, 'foo']), // >= 1.9.0
+    var_tuple: new TupleParam([42, "foo"]), // >= 1.9.0
     var_map: new Map([
-      [42, ['a', 'b']],
-      [144, ['c', 'd']],
+      [42, ["a", "b"]],
+      [144, ["c", "d"]],
     ]), // >= 1.9.0
-    var_date: '2022-01-01',
-    var_datetime: '2022-01-01 12:34:56', // or a Date
-    var_datetime64_3: '2022-01-01 12:34:56.789', // or a Date
-    var_datetime64_9: '2022-01-01 12:34:56.123456789', // string for ns precision
-    var_decimal: '123.45', // string to avoid precision loss
-    var_uuid: '01234567-89ab-cdef-0123-456789abcdef',
-    var_ipv4: '192.168.0.1',
+    var_date: "2022-01-01",
+    var_datetime: "2022-01-01 12:34:56", // or a Date
+    var_datetime64_3: "2022-01-01 12:34:56.789", // or a Date
+    var_datetime64_9: "2022-01-01 12:34:56.123456789", // string for ns precision
+    var_decimal: "123.45", // string to avoid precision loss
+    var_uuid: "01234567-89ab-cdef-0123-456789abcdef",
+    var_ipv4: "192.168.0.1",
     var_null: null, // fixed in 0.0.16
   },
-})
+});
 ```
 
 ### Type-by-type tips
@@ -131,14 +131,14 @@ await client.query({
       'foo_\\'_bar' = {single_quote: String}    AS has_single_quote,
       'foo_\\_bar'  = {backslash: String}       AS has_backslash
   `,
-  format: 'JSONEachRow',
+  format: "JSONEachRow",
   query_params: {
-    tab: 'foo_\t_bar',
-    newline: 'foo_\n_bar',
+    tab: "foo_\t_bar",
+    newline: "foo_\n_bar",
     single_quote: "foo_'_bar",
-    backslash: 'foo_\\_bar',
+    backslash: "foo_\\_bar",
   },
-})
+});
 ```
 
 ## Common pitfalls

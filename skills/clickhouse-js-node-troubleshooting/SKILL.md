@@ -9,10 +9,6 @@ description: >
   query timeouts. Trigger even when the user hasn't precisely named the issue; vague
   symptoms like "my inserts keep failing" or "connection drops randomly" in a Node.js
   context are strong signals to use this skill. Do NOT use for browser/Web client issues.
-license: MIT
-metadata:
-  author: ClickHouse Inc
-  version: "0.1.0"
 ---
 
 # ClickHouse Node.js Client Troubleshooting
@@ -36,16 +32,17 @@ Reference: https://clickhouse.com/docs/integrations/javascript
 
 Identify the user's issue from the list below and read the corresponding reference file for detailed troubleshooting steps.
 
-| Issue                                 | Symptoms                                                                                       | Reference file                |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------- |
-| **Socket Hang-Up / ECONNRESET**       | `socket hang up`, `ECONNRESET`, intermittent connection drops, long-running queries timing out | `reference/socket-hangup.md`  |
-| **Data Type Mismatches**              | Large integers returned as strings, decimal precision loss, Date/DateTime insertion failures   | `reference/data-types.md`     |
-| **Read-Only User Errors**             | Errors when using response compression with `readonly=1` users                                 | `reference/readonly-users.md` |
-| **Proxy / Pathname URL Confusion**    | Wrong database selected, requests failing behind a proxy with a path prefix                    | `reference/proxy-pathname.md` |
-| **TLS / Certificate Errors**          | TLS handshake failures, certificate verification issues, mutual TLS setup                      | `reference/tls.md`            |
-| **Compression Not Working**           | GZIP compression not activating for requests or responses                                      | `reference/compression.md`    |
-| **Logging Not Showing Anything**      | No log output, need custom logger integration                                                  | `reference/logging.md`        |
-| **Query Parameters Not Interpolated** | Parameterized queries not working, SQL injection concerns                                      | `reference/query-params.md`   |
+| Issue                                      | Symptoms                                                                                                                                                                     | Reference file                     |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| **Socket Hang-Up / ECONNRESET**            | `socket hang up`, `ECONNRESET`, intermittent connection drops, long-running queries timing out                                                                               | `reference/socket-hangup.md`       |
+| **Data Type Mismatches**                   | Large integers returned as strings, decimal precision loss, Date/DateTime insertion failures, `CANNOT_PARSE_INPUT_ASSERTION_FAILED` inserting a UUID into a `UInt128` column | `reference/data-types.md`          |
+| **Read-Only User Errors**                  | Errors when using response compression with `readonly=1` users                                                                                                               | `reference/readonly-users.md`      |
+| **Proxy / Pathname URL Confusion**         | Wrong database selected, requests failing behind a proxy with a path prefix                                                                                                  | `reference/proxy-pathname.md`      |
+| **TLS / Certificate Errors**               | TLS handshake failures, certificate verification issues, mutual TLS setup                                                                                                    | `reference/tls.md`                 |
+| **Compression Not Working**                | GZIP compression not activating for requests or responses                                                                                                                    | `reference/compression.md`         |
+| **Logging Not Showing Anything**           | No log output, need custom logger integration                                                                                                                                | `reference/logging.md`             |
+| **Query Parameters Not Interpolated**      | Parameterized queries not working, SQL injection concerns                                                                                                                    | `reference/query-params.md`        |
+| **FORMAT Clause / `SHOW POLICIES` Errors** | Syntax error from a duplicate `FORMAT`, or `SHOW [ROW] POLICIES` failing even with a format provided                                                                         | `reference/query-format-clause.md` |
 
 ---
 

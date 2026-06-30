@@ -9,17 +9,17 @@
 **Fix:** Remove response compression for read-only users:
 
 ```js
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 // Don't do this with a readonly=1 user:
 // compression: { response: true }
 
 const client = createClient({
-  username: 'my_readonly_user',
-  password: '...',
+  username: "my_readonly_user",
+  password: "...",
   // compression omitted, or explicitly set to false
   compression: {
     response: false,
   },
-})
+});
 ```

@@ -17,7 +17,7 @@
 Enable on the client level or per-request via `clickhouse_settings`:
 
 ```ts
-import { createClient, ClickHouseError } from '@clickhouse/client'
+import { createClient, ClickHouseError } from "@clickhouse/client";
 
 const client = createClient({
   url: process.env.CLICKHOUSE_URL,
@@ -26,10 +26,10 @@ const client = createClient({
   clickhouse_settings: {
     async_insert: 1,
     wait_for_async_insert: 1, // wait for ack from server
-    async_insert_max_data_size: '1000000',
+    async_insert_max_data_size: "1000000",
     async_insert_busy_timeout_ms: 1000,
   },
-})
+});
 ```
 
 ## Concurrent small inserts
@@ -42,21 +42,21 @@ const promises = [...new Array(10)].map(async () => {
   const values = [...new Array(1000).keys()].map(() => ({
     id: Math.floor(Math.random() * 100_000) + 1,
     data: Math.random().toString(36).slice(2),
-  }))
+  }));
 
   await client
-    .insert({ table: 'async_insert_example', values, format: 'JSONEachRow' })
+    .insert({ table: "async_insert_example", values, format: "JSONEachRow" })
     .catch((err) => {
       if (err instanceof ClickHouseError) {
         // err.code matches a row in system.errors
-        console.error(`ClickHouse error ${err.code}:`, err)
-        return
+        console.error(`ClickHouse error ${err.code}:`, err);
+        return;
       }
-      console.error('Insert failed:', err)
-    })
-})
+      console.error("Insert failed:", err);
+    });
+});
 
-await Promise.all(promises)
+await Promise.all(promises);
 ```
 
 ## `wait_for_async_insert` — fire-and-forget vs ack
@@ -82,7 +82,7 @@ await client.command({
     ENGINE MergeTree ORDER BY id
   `,
   clickhouse_settings: { wait_end_of_query: 1 },
-})
+});
 ```
 
 Even better is to create a specialized client for inserts with the appropriate async

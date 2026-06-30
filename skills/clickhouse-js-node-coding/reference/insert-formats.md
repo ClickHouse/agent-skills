@@ -27,20 +27,20 @@ When answering "what format/call should I use for an array of JS objects?":
 This is the right answer for ~90% of inserts.
 
 ```ts
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
-const client = createClient()
+const client = createClient();
 
 await client.insert({
-  table: 'events',
-  format: 'JSONEachRow',
+  table: "events",
+  format: "JSONEachRow",
   values: [
-    { id: 42, name: 'foo' },
-    { id: 43, name: 'bar' },
+    { id: 42, name: "foo" },
+    { id: 43, name: "bar" },
   ],
-})
+});
 
-await client.close()
+await client.close();
 ```
 
 The shape of `values` must match the chosen format.
@@ -60,15 +60,15 @@ The shape of `values` must match the chosen format.
 
 ```ts
 await client.insert({
-  table: 'events',
-  format: 'JSONCompactEachRowWithNamesAndTypes',
+  table: "events",
+  format: "JSONCompactEachRowWithNamesAndTypes",
   values: [
-    ['id', 'name', 'sku'],
-    ['UInt32', 'String', 'Array(UInt32)'],
-    [11, 'foo', [1, 2, 3]],
-    [12, 'bar', [4, 5, 6]],
+    ["id", "name", "sku"],
+    ["UInt32", "String", "Array(UInt32)"],
+    [11, "foo", [1, 2, 3]],
+    [12, "bar", [4, 5, 6]],
   ],
-})
+});
 ```
 
 These formats can be **streamed** — pass a Node stream of rows instead of an
@@ -88,33 +88,33 @@ These cannot be streamed — the entire body is sent in one shot.
 | `JSONObjectEachRow`       | `Record<string, { col: value, ... }>` (the record key labels each row but is not stored)                                  |
 
 ```ts
-import type { InputJSON, InputJSONObjectEachRow } from '@clickhouse/client'
+import type { InputJSON, InputJSONObjectEachRow } from "@clickhouse/client";
 
-const meta: InputJSON['meta'] = [
-  { name: 'id', type: 'UInt32' },
-  { name: 'name', type: 'String' },
-]
+const meta: InputJSON["meta"] = [
+  { name: "id", type: "UInt32" },
+  { name: "name", type: "String" },
+];
 
 await client.insert({
-  table: 'events',
-  format: 'JSONCompact',
+  table: "events",
+  format: "JSONCompact",
   values: {
     meta,
     data: [
-      [19, 'foo'],
-      [20, 'bar'],
+      [19, "foo"],
+      [20, "bar"],
     ],
   },
-})
+});
 
 await client.insert({
-  table: 'events',
-  format: 'JSONObjectEachRow',
+  table: "events",
+  format: "JSONObjectEachRow",
   values: {
-    row_1: { id: 23, name: 'foo' },
-    row_2: { id: 24, name: 'bar' },
+    row_1: { id: 23, name: "foo" },
+    row_2: { id: 24, name: "bar" },
   } satisfies InputJSONObjectEachRow<{ id: number; name: string }>,
-})
+});
 ```
 
 ## Quick chooser
@@ -138,5 +138,4 @@ await client.insert({
 - For type guidance (`Decimal` strings, `Date` objects, `BigInt`), see
   `insert-values.md` and `custom-json.md`.
 - **Use runtime type checkers like `zod` or `io-ts` if your app ingests untrusted JSON.**
-  It's easier to debug mismatches between your data and the format's expected shape with a validation library used at the place of ingestion than with ClickHouse errors.
-  This is especially true in the middle of a large insert batch or streaming operation.
+  It's easier to debug mismatches between your data and the format's expected shape with a validation library used at the place of ingestion than with ClickHouse errors, especially in the middle of a large insert batch or streaming operation.

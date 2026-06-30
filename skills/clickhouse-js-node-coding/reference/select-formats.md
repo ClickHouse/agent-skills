@@ -9,23 +9,23 @@
 Right answer for ~90% of selects when the result fits in memory.
 
 ```ts
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 interface Row {
-  number: string
+  number: string;
 }
 
-const client = createClient()
+const client = createClient();
 const rows = await client.query({
-  query: 'SELECT number FROM system.numbers LIMIT 5',
-  format: 'JSONEachRow',
-})
-const result = await rows.json<Row>() // Row[]
-result.forEach((r) => console.log(r))
+  query: "SELECT number FROM system.numbers LIMIT 5",
+  format: "JSONEachRow",
+});
+const result = await rows.json<Row>(); // Row[]
+result.forEach((r) => console.log(r));
 // { number: '0' }
 // { number: '1' }
 // ...
-await client.close()
+await client.close();
 ```
 
 `UInt64`/`Int64` and other 64-bit integers are returned as **strings**
@@ -41,16 +41,16 @@ Use `JSON` (or `JSONCompact`) when you need ClickHouse's response envelope
 `ResponseJSON<T>`:
 
 ```ts
-import { createClient, type ResponseJSON } from '@clickhouse/client'
+import { createClient, type ResponseJSON } from "@clickhouse/client";
 
-const client = createClient()
+const client = createClient();
 const rows = await client.query({
-  query: 'SELECT number FROM system.numbers LIMIT 2',
-  format: 'JSON',
-})
-const result = await rows.json<ResponseJSON<{ number: string }>>()
-console.info(result.meta, result.data, result.rows, result.statistics)
-await client.close()
+  query: "SELECT number FROM system.numbers LIMIT 2",
+  format: "JSON",
+});
+const result = await rows.json<ResponseJSON<{ number: string }>>();
+console.info(result.meta, result.data, result.rows, result.statistics);
+await client.close();
 ```
 
 > `JSON`, `JSONCompact`, `JSONStrings`, `JSONCompactStrings`,
@@ -64,10 +64,10 @@ Use `.text()` (not `.json()`) for raw textual formats:
 
 ```ts
 const rs = await client.query({
-  query: 'SELECT number, number * 2 AS doubled FROM system.numbers LIMIT 3',
-  format: 'CSVWithNames',
-})
-console.log(await rs.text())
+  query: "SELECT number, number * 2 AS doubled FROM system.numbers LIMIT 3",
+  format: "CSVWithNames",
+});
+console.log(await rs.text());
 ```
 
 Streaming raw text/Parquet line-by-line belongs in
