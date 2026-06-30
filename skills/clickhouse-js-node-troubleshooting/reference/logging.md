@@ -5,20 +5,20 @@
 The default log level is **OFF** (for `< 1.18.1`) or **WARN** (for `>= 1.18.1`). Enable it explicitly:
 
 ```js
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client'
+import { ClickHouseLogLevel, createClient } from "@clickhouse/client";
 
 const client = createClient({
   log: {
     level: ClickHouseLogLevel.DEBUG, // TRACE | DEBUG | INFO | WARN | ERROR
   },
-})
+});
 ```
 
 To use a custom logger (e.g., to pipe to your observability stack), implement the `Logger` interface:
 
 ```ts
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client'
-import type { Logger } from '@clickhouse/client'
+import { ClickHouseLogLevel, createClient } from "@clickhouse/client";
+import type { Logger } from "@clickhouse/client";
 
 class MyLogger implements Logger {
   debug({ module, message, args }) {
@@ -40,5 +40,5 @@ class MyLogger implements Logger {
 
 const client = createClient({
   log: { LoggerClass: MyLogger, level: ClickHouseLogLevel.INFO },
-})
+});
 ```

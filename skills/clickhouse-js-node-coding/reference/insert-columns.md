@@ -22,11 +22,11 @@ get their declared default.
 
 ```ts
 await client.insert({
-  table: 'events',
-  columns: ['message'], // the rest of the events table columns get their DEFAULTs
-  format: 'JSONEachRow',
-  values: [{ message: 'foo' }],
-})
+  table: "events",
+  columns: ["message"], // the rest of the events table columns get their DEFAULTs
+  format: "JSONEachRow",
+  values: [{ message: "foo" }],
+});
 ```
 
 ## Insert excluding columns
@@ -36,11 +36,11 @@ should default but you want to name only the few to skip.
 
 ```ts
 await client.insert({
-  table: 'events',
-  format: 'JSONEachRow',
-  values: [{ message: 'bar' }],
-  columns: { except: ['id'] },
-})
+  table: "events",
+  format: "JSONEachRow",
+  values: [{ message: "bar" }],
+  columns: { except: ["id"] },
+});
 ```
 
 ## Tables with EPHEMERAL columns
@@ -62,18 +62,18 @@ await client.command({
     ENGINE MergeTree
     ORDER BY id
   `,
-})
+});
 
 await client.insert({
-  table: 'events',
-  format: 'JSONEachRow',
+  table: "events",
+  format: "JSONEachRow",
   values: [
-    { id: '42', message_default: 'foo' },
-    { id: '144', message_default: 'bar' },
+    { id: "42", message_default: "foo" },
+    { id: "144", message_default: "bar" },
   ],
   // Including the ephemeral column name triggers the DEFAULT expression
-  columns: ['id', 'message_default'],
-})
+  columns: ["id", "message_default"],
+});
 ```
 
 ## Insert into a different database
@@ -82,15 +82,15 @@ If the client's default `database` is not the target, qualify the table name
 with `db.table`:
 
 ```ts
-const client = createClient({ database: 'system' })
+const client = createClient({ database: "system" });
 
-await client.command({ query: 'CREATE DATABASE IF NOT EXISTS analytics' })
+await client.command({ query: "CREATE DATABASE IF NOT EXISTS analytics" });
 
 await client.insert({
-  table: 'analytics.events', // fully qualified
-  format: 'JSONEachRow',
-  values: [{ id: 42, message: 'foo' }],
-})
+  table: "analytics.events", // fully qualified
+  format: "JSONEachRow",
+  values: [{ id: 42, message: "foo" }],
+});
 ```
 
 There is no per-call `database` override on `insert()` / `query()` — qualify

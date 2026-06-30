@@ -30,16 +30,16 @@ When answering configuration questions, include the relevant points:
 ## Minimal client
 
 ```ts
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 const client = createClient({
   url: process.env.CLICKHOUSE_URL, // defaults to 'http://localhost:8123'
   username: process.env.CLICKHOUSE_USER, // defaults to 'default'
   password: process.env.CLICKHOUSE_PASSWORD, // defaults to ''
-  database: 'analytics', // defaults to 'default'
-})
+  database: "analytics", // defaults to 'default'
+});
 // ... your queries ...
-await client.close()
+await client.close();
 ```
 
 `url` accepts a string or a `URL` object. The accepted string format is:
@@ -62,7 +62,7 @@ export CLICKHOUSE_URL='https://bob:secret@my.host:8124/analytics'
 
 ```ts
 // In your Node.js code — no URL construction needed:
-const client = createClient({ url: process.env.CLICKHOUSE_URL })
+const client = createClient({ url: process.env.CLICKHOUSE_URL });
 ```
 
 ## Per-client vs per-request `clickhouse_settings` ⭐
@@ -79,14 +79,14 @@ const client = createClient({
   clickhouse_settings: {
     output_format_json_quote_64bit_integers: 0, // applied to every request
   },
-})
+});
 
 const rows = await client.query({
-  query: 'SELECT number FROM system.numbers LIMIT 2 FORMAT JSONEachRow',
+  query: "SELECT number FROM system.numbers LIMIT 2 FORMAT JSONEachRow",
   clickhouse_settings: {
     output_format_json_quote_64bit_integers: 1, // overrides client default for this call
   },
-})
+});
 ```
 
 ## `default_format` for `exec()`
@@ -96,17 +96,17 @@ query has no trailing `FORMAT …` clause, set `default_format` so the server
 knows what to send back, then wrap the response in a `ResultSet`:
 
 ```ts
-import { createClient, ResultSet } from '@clickhouse/client'
+import { createClient, ResultSet } from "@clickhouse/client";
 
-const client = createClient()
-const format = 'JSONCompactEachRowWithNamesAndTypes'
+const client = createClient();
+const format = "JSONCompactEachRowWithNamesAndTypes";
 const { stream, query_id } = await client.exec({
-  query: 'SELECT database, name, engine FROM system.tables LIMIT 5',
+  query: "SELECT database, name, engine FROM system.tables LIMIT 5",
   clickhouse_settings: { default_format: format },
-})
-const rs = new ResultSet(stream, format, query_id)
-console.log(await rs.json())
-await client.close()
+});
+const rs = new ResultSet(stream, format, query_id);
+console.log(await rs.json());
+await client.close();
 ```
 
 For ordinary `SELECT`s prefer `client.query({ format })` — `default_format` is

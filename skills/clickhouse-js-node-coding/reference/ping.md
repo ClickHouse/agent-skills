@@ -28,20 +28,20 @@ When answering "how do I health-check / readiness-probe ClickHouse?":
 ## Successful ping
 
 ```ts
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 const client = createClient({
   url: process.env.CLICKHOUSE_URL,
   password: process.env.CLICKHOUSE_PASSWORD,
-})
+});
 
-const pingResult = await client.ping()
+const pingResult = await client.ping();
 if (pingResult.success) {
-  console.info('ClickHouse is reachable')
+  console.info("ClickHouse is reachable");
 } else {
-  console.error('Ping failed:', pingResult.error)
+  console.error("Ping failed:", pingResult.error);
 }
-await client.close()
+await client.close();
 ```
 
 Use `ping()` to:
@@ -57,44 +57,44 @@ Use `ping()` to:
 `{ success: false, error: Error }`, so you can branch without `try/catch`:
 
 ```ts
-import type { PingResult } from '@clickhouse/client'
-import { createClient } from '@clickhouse/client'
+import type { PingResult } from "@clickhouse/client";
+import { createClient } from "@clickhouse/client";
 
 const client = createClient({
-  url: 'http://localhost:8100', // non-existing host
+  url: "http://localhost:8100", // non-existing host
   request_timeout: 50, // keep failure fast
-})
+});
 
-const pingResult = await client.ping()
+const pingResult = await client.ping();
 if (hasConnectionRefusedError(pingResult)) {
-  console.info('Connection refused, as expected')
+  console.info("Connection refused, as expected");
 } else {
-  console.error('Ping expected ECONNREFUSED, got:', pingResult)
+  console.error("Ping expected ECONNREFUSED, got:", pingResult);
 }
-await client.close()
+await client.close();
 
 function hasConnectionRefusedError(
   pingResult: PingResult,
-): pingResult is PingResult & { error: { code: 'ECONNREFUSED' } } {
+): pingResult is PingResult & { error: { code: "ECONNREFUSED" } } {
   return (
     !pingResult.success &&
-    'code' in pingResult.error &&
-    pingResult.error.code === 'ECONNREFUSED'
-  )
+    "code" in pingResult.error &&
+    pingResult.error.code === "ECONNREFUSED"
+  );
 }
 ```
 
 ## Mapping to an HTTP health endpoint
 
 ```ts
-app.get('/healthz', async (_req, res) => {
-  const r = await client.ping()
+app.get("/healthz", async (_req, res) => {
+  const r = await client.ping();
   if (r.success) {
-    res.status(200).json({ ok: true })
+    res.status(200).json({ ok: true });
   } else {
-    res.status(503).json({ ok: false, error: String(r.error) })
+    res.status(503).json({ ok: false, error: String(r.error) });
   }
-})
+});
 ```
 
 ## `ping()` vs `ping({ select: true })`
@@ -107,7 +107,7 @@ pipeline) will still return `{ success: true }` from a plain `ping()`.
 Pass `{ select: true }` to run a lightweight `SELECT 1` instead:
 
 ```ts
-const r = await client.ping({ select: true })
+const r = await client.ping({ select: true });
 // success only if the server is reachable AND auth is correct AND it can run queries
 ```
 

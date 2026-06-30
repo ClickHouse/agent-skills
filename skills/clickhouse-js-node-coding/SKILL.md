@@ -65,6 +65,7 @@ Reference: https://clickhouse.com/docs/integrations/javascript
    - `TupleParam` and JS `Map` in `query_params`: client `>= 1.9.0`.
    - Configurable `json.parse` / `json.stringify`: client `>= 1.14.0`.
    - `Time` / `Time64` data types: ClickHouse server `>= 25.6`.
+   - `QBit` data type: ClickHouse server `>= 25.10` (GA on `26.x`).
    - `Dynamic` / `Variant` / new `JSON` types: ClickHouse server `>= 24.1` /
      `24.5` / `24.8` (no longer experimental since `25.3`).
 
@@ -74,19 +75,20 @@ Reference: https://clickhouse.com/docs/integrations/javascript
 
 Identify the user's task and read the matching reference file.
 
-| Task                                                     | Triggers / symptoms                                                                                        | Reference file                      |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| **Configure / connect the client**                       | Building a `createClient` call, URL parameters, `clickhouse_settings`, default format, custom HTTP headers | `reference/client-configuration.md` |
-| **Ping the server**                                      | Health checks, readiness probes, "is ClickHouse up?"                                                       | `reference/ping.md`                 |
-| **Choose an insert format**                              | "Which format should I use to insert?", JSON vs raw, `JSONEachRow` vs `JSON` vs `JSONObjectEachRow`        | `reference/insert-formats.md`       |
-| **Insert into a subset of columns / different database** | `insert({ columns })`, excluding columns, ephemeral columns, cross-DB inserts                              | `reference/insert-columns.md`       |
-| **Insert values, expressions, dates, decimals**          | `INSERT … VALUES` with SQL functions, `Date`/`DateTime` from JS, `Decimal` precision, `INSERT … SELECT`    | `reference/insert-values.md`        |
-| **Async inserts (server-side batching)**                 | `async_insert=1`, fire-and-forget vs wait-for-ack                                                          | `reference/async-insert.md`         |
-| **Select and parse results**                             | `JSONEachRow` reads, `JSON` with metadata, picking a select format                                         | `reference/select-formats.md`       |
-| **Parameterize queries**                                 | Binding values, special characters / escaping, "SQL injection?", `{name: Type}` syntax                     | `reference/query-parameters.md`     |
-| **Sessions & temporary tables**                          | `session_id`, `CREATE TEMPORARY TABLE`, per-session `SET` commands                                         | `reference/sessions.md`             |
-| **Modern data types**                                    | `Dynamic`, `Variant`, `JSON` (object), `Time`, `Time64`                                                    | `reference/data-types.md`           |
-| **Custom JSON parse/stringify**                          | Plug in `JSONBig` / `safe-stable-stringify` / a `BigInt`-aware serializer                                  | `reference/custom-json.md`          |
+| Task                                                     | Triggers / symptoms                                                                                                                                                                                                             | Reference file                      |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| **Configure / connect the client**                       | Building a `createClient` call, URL parameters, `clickhouse_settings`, default format, custom HTTP headers                                                                                                                      | `reference/client-configuration.md` |
+| **Compress requests / responses**                        | `compression`, gzip vs `zstd`, `{ codec }` option shape, Node version requirements, web limitations                                                                                                                             | `reference/compression.md`          |
+| **Ping the server**                                      | Health checks, readiness probes, "is ClickHouse up?"                                                                                                                                                                            | `reference/ping.md`                 |
+| **Choose an insert format**                              | "Which format should I use to insert?", JSON vs raw, `JSONEachRow` vs `JSON` vs `JSONObjectEachRow`                                                                                                                             | `reference/insert-formats.md`       |
+| **Insert into a subset of columns / different database** | `insert({ columns })`, excluding columns, ephemeral columns, cross-DB inserts                                                                                                                                                   | `reference/insert-columns.md`       |
+| **Insert values, expressions, dates, decimals**          | `INSERT … VALUES` with SQL functions, `Date`/`DateTime` from JS, `Decimal` precision, `INSERT … SELECT`; inserting a UUID into a `UInt128` column is tricky — use when the user is writing code that stores a UUID as `UInt128` | `reference/insert-values.md`        |
+| **Async inserts (server-side batching)**                 | `async_insert=1`, fire-and-forget vs wait-for-ack                                                                                                                                                                               | `reference/async-insert.md`         |
+| **Select and parse results**                             | `JSONEachRow` reads, `JSON` with metadata, picking a select format                                                                                                                                                              | `reference/select-formats.md`       |
+| **Parameterize queries**                                 | Binding values, special characters / escaping, "SQL injection?", `{name: Type}` syntax                                                                                                                                          | `reference/query-parameters.md`     |
+| **Sessions & temporary tables**                          | `session_id`, `CREATE TEMPORARY TABLE`, per-session `SET` commands                                                                                                                                                              | `reference/sessions.md`             |
+| **Modern data types**                                    | `Dynamic`, `Variant`, `JSON` (object), `Time`, `Time64`, `QBit` (vector search)                                                                                                                                                 | `reference/data-types.md`           |
+| **Custom JSON parse/stringify**                          | Plug in `JSONBig` / `safe-stable-stringify` / a `BigInt`-aware serializer                                                                                                                                                       | `reference/custom-json.md`          |
 
 ---
 

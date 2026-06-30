@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Copied from the repo root by `prepack` so the published tarball carries it.
+LICENSE

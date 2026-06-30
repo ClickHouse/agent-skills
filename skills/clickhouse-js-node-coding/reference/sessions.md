@@ -65,30 +65,30 @@ script, a background job, a single user's session that you've already manually
 serialized in the code).
 
 ```ts
-import { createClient } from '@clickhouse/client'
-import * as crypto from 'node:crypto'
+import { createClient } from "@clickhouse/client";
+import * as crypto from "node:crypto";
 
 const client = createClient({
   session_id: crypto.randomUUID(),
   max_open_connections: 1, // safeguard against concurrent-session errors
-})
+});
 
 await client.command({
-  query: 'CREATE TEMPORARY TABLE temporary_example (i Int32)',
-})
+  query: "CREATE TEMPORARY TABLE temporary_example (i Int32)",
+});
 
 await client.insert({
-  table: 'temporary_example',
+  table: "temporary_example",
   values: [{ i: 42 }, { i: 144 }],
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 
 const rs = await client.query({
-  query: 'SELECT * FROM temporary_example',
-  format: 'JSONEachRow',
-})
-console.info(await rs.json())
-await client.close()
+  query: "SELECT * FROM temporary_example",
+  format: "JSONEachRow",
+});
+console.info(await rs.json());
+await client.close();
 ```
 
 ## Session-level `SET` commands
@@ -97,37 +97,37 @@ await client.close()
 client, every subsequent call inherits the change.
 
 ```ts
-import { createClient } from '@clickhouse/client'
-import * as crypto from 'node:crypto'
+import { createClient } from "@clickhouse/client";
+import * as crypto from "node:crypto";
 
 const client = createClient({
   session_id: crypto.randomUUID(),
   max_open_connections: 1, // safe-guard against concurrent-session errors
-})
+});
 
 await client.command({
-  query: 'SET output_format_json_quote_64bit_integers = 0',
+  query: "SET output_format_json_quote_64bit_integers = 0",
   clickhouse_settings: { wait_end_of_query: 1 }, // ack before next call
-})
+});
 
 const rs1 = await client.query({
-  query: 'SELECT toInt64(42)',
-  format: 'JSONEachRow',
-})
+  query: "SELECT toInt64(42)",
+  format: "JSONEachRow",
+});
 // → 64-bit integers come back as numbers in this query
 
 await client.command({
-  query: 'SET output_format_json_quote_64bit_integers = 1',
+  query: "SET output_format_json_quote_64bit_integers = 1",
   clickhouse_settings: { wait_end_of_query: 1 },
-})
+});
 
 const rs2 = await client.query({
-  query: 'SELECT toInt64(144)',
-  format: 'JSONEachRow',
-})
+  query: "SELECT toInt64(144)",
+  format: "JSONEachRow",
+});
 // → 64-bit integers come back as strings again
 
-await client.close()
+await client.close();
 ```
 
 > **`wait_end_of_query: 1` matters here.** Without it, a `SET` on one
