@@ -59,7 +59,7 @@ The server uses a self-signed cert (the certificate is its own CA). Options in o
 
    ```js
    tls: {
-     ca_cert: fs.readFileSync("certs/server.crt");
+     ca_cert: fs.readFileSync("certs/server.crt"),
    }
    ```
 
