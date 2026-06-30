@@ -1,0 +1,81 @@
+{
+  "name": "@clickhouse/rowbinary",
+  "version": "0.2.0",
+  "description": "RowBinary building blocks for Node.js — read and write (decode/encode) ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams. Ships with the clickhouse-js-node-rowbinary agent skill.",
+  "homepage": "https://github.com/ClickHouse/clickhouse-js/tree/main/skills/clickhouse-js-node-rowbinary",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "rowbinary",
+    "parser",
+    "decoder",
+    "encoder",
+    "writer",
+    "streaming",
+    "skill"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClickHouse/clickhouse-js.git",
+    "directory": "skills/clickhouse-js-node-rowbinary"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/readers/reader.js",
+  "module": "./dist/readers/reader.js",
+  "types": "./dist/readers/reader.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/readers/reader.d.ts",
+      "import": "./dist/readers/reader.js"
+    },
+    "./writer": {
+      "types": "./dist/writers/writer.d.ts",
+      "import": "./dist/writers/writer.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "SKILL.md",
+    "reader.md",
+    "writer.md",
+    "README.md",
+    "EXAMPLES.md",
+    "CHANGELOG.md"
+  ],
+  "agents": {
+    "skills": [
+      {
+        "name": "clickhouse-js-node-rowbinary",
+        "path": "."
+      }
+    ]
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench --run",
+    "typecheck": "tsc --noEmit",
+    "prepack": "cp ../../LICENSE . && npm run build"
+  },
+  "dependencies": {
+    "@clickhouse/datatype-parser": "^0.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
