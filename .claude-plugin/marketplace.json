@@ -109,6 +109,46 @@
         "embedded"
       ],
       "category": "database"
+    },
+    {
+      "name": "clickhousectl-local-dev",
+      "source": "./skills/clickhousectl-local-dev/",
+      "description": "Step-by-step workflow for setting up a local ClickHouse development environment using clickhousectl — installing the CLI, installing ClickHouse, initializing a project, starting a server, creating schemas, seeding data, and verifying the setup",
+      "version": "0.2.0",
+      "author": {
+        "name": "ClickHouse Inc"
+      },
+      "homepage": "https://clickhouse.ai",
+      "repository": "https://github.com/ClickHouse/agent-skills",
+      "license": "Apache-2.0",
+      "keywords": [
+        "clickhouse",
+        "clickhousectl",
+        "database",
+        "local-development",
+        "setup"
+      ],
+      "category": "database"
+    },
+    {
+      "name": "clickhousectl-cloud-deploy",
+      "source": "./skills/clickhousectl-cloud-deploy/",
+      "description": "Step-by-step workflow for deploying to ClickHouse Cloud using clickhousectl — signing up, authenticating the CLI, creating a cloud service, migrating local schemas, and connecting an application",
+      "version": "0.2.0",
+      "author": {
+        "name": "ClickHouse Inc"
+      },
+      "homepage": "https://clickhouse.ai",
+      "repository": "https://github.com/ClickHouse/agent-skills",
+      "license": "Apache-2.0",
+      "keywords": [
+        "clickhouse",
+        "clickhousectl",
+        "database",
+        "cloud",
+        "deployment"
+      ],
+      "category": "database"
     }
   ]
 }

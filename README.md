@@ -99,6 +99,22 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* â€
 
 **For agents:** The skill activates when you write SQL queries against files, use ClickHouse table functions, build stateful analytical pipelines, or use advanced ClickHouse SQL features.
 
+### clickhousectl Local Dev
+
+**Step-by-step workflow** for setting up a local ClickHouse development environment using [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). Covers installing the CLI, installing ClickHouse, initializing a project, starting a server, creating schemas, seeding data, and verifying the setup.
+
+**Location:** [`skills/clickhousectl-local-dev/`](./skills/clickhousectl-local-dev/)
+
+**For agents:** The skill activates when a user wants to build an application with ClickHouse, set up a local development environment, install ClickHouse, or start developing with ClickHouse from zero.
+
+### clickhousectl Cloud Deploy
+
+**Step-by-step workflow** for deploying to ClickHouse Cloud using [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). Covers signing up for ClickHouse Cloud, authenticating the CLI, creating a cloud service, migrating local schemas, and connecting an application to the cloud service.
+
+**Location:** [`skills/clickhousectl-cloud-deploy/`](./skills/clickhousectl-cloud-deploy/)
+
+**For agents:** The skill activates when a user wants to deploy ClickHouse to production, host a managed ClickHouse service, or migrate from a local setup to ClickHouse Cloud.
+
 ## Quick Start
 
 After installation, your AI agent will reference these skills when:
@@ -113,6 +129,8 @@ After installation, your AI agent will reference these skills when:
 - Analyzing data with pandas-style DataStore API
 - Querying files or databases with chdb SQL
 - Joining data across different sources (MySQL + S3 + local files)
+- Setting up a local ClickHouse development environment with `clickhousectl`
+- Deploying to ClickHouse Cloud with `clickhousectl`
 
 Example prompts:
 > "Create a table for storing user events with fields for user_id, event_type, properties (JSON), and timestamp"
