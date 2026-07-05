@@ -115,6 +115,14 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* â€
 
 **For agents:** The skill activates when a user wants to deploy ClickHouse to production, host a managed ClickHouse service, or migrate from a local setup to ClickHouse Cloud.
 
+### ClickStack OTel Collector
+
+**Step-by-step workflow** for wiring an OpenTelemetry collector into a Managed ClickStack service on ClickHouse Cloud. Covers deploying a new local collector (Docker run or Docker Compose) or configuring an existing collector, creating a dedicated ingest SQL user, sending rich synthetic telemetry, and verifying the data is visible in ClickStack.
+
+**Location:** [`skills/clickstack-otel-collector/`](./skills/clickstack-otel-collector/)
+
+**For agents:** The skill activates when a user wants to connect an OpenTelemetry collector to a Managed ClickStack service, send telemetry (logs, traces, metrics) into ClickStack, or verify their observability data pipeline end-to-end.
+
 ## Quick Start
 
 After installation, your AI agent will reference these skills when:
@@ -131,6 +139,7 @@ After installation, your AI agent will reference these skills when:
 - Joining data across different sources (MySQL + S3 + local files)
 - Setting up a local ClickHouse development environment with `clickhousectl`
 - Deploying to ClickHouse Cloud with `clickhousectl`
+- Wiring an OpenTelemetry collector into Managed ClickStack
 
 Example prompts:
 > "Create a table for storing user events with fields for user_id, event_type, properties (JSON), and timestamp"
