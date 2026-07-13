@@ -1,0 +1,11 @@
+{
+  "version": "0.6.0",
+  "organization": "ClickHouse Inc",
+  "date": "July 2026",
+  "abstract": "Step-by-step workflow for wiring an OpenTelemetry collector into a Managed ClickStack service on ClickHouse Cloud. Covers deploying a new local collector (Docker run or Docker Compose) or configuring an existing collector, creating a dedicated ingest SQL user, sending rich synthetic telemetry, and verifying the data is visible in ClickStack.",
+  "references": [
+    "https://clickhouse.com/docs/use-cases/observability/clickstack",
+    "https://clickhouse.com/docs/interfaces/cli",
+    "https://opentelemetry.io/docs/collector/"
+  ]
+}
