@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "organization": "ClickHouse Inc",
+  "date": "July 2026",
+  "abstract": "Workflows for running Postgres with clickhousectl, covering both local and cloud. Local: Docker-backed Postgres instances for development — start, psql client, .env wiring, lifecycle. Cloud: managed ClickHouse Cloud Postgres services (beta) — authentication, service creation, connections and TLS, runtime configuration, read replicas, failover, and point-in-time restore. The top-level skill routes between ref/local.md and ref/cloud.md, and the local workflow hands off to cloud when going to production.",
+  "references": [
+    "https://clickhouse.com/docs",
+    "https://github.com/ClickHouse/clickhousectl",
+    "https://clickhouse.cloud"
+  ]
+}

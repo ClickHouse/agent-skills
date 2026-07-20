@@ -1,26 +1,6 @@
----
-name: clickhousectl-cloud-deploy
-description: Use when a user wants to deploy ClickHouse to the cloud, go to production, use ClickHouse Cloud, host a managed ClickHouse service, or migrate from a local ClickHouse setup to ClickHouse Cloud.
-license: Apache-2.0
-metadata:
-  author: ClickHouse Inc
-  version: "0.2.0"
----
+# ClickHouse Cloud
 
-# Deploy to ClickHouse Cloud
-
-This skill walks through deploying to ClickHouse Cloud using `clickhousectl`. It covers account setup, CLI authentication, service creation, schema migration, and connecting your application. Follow these steps in order.
-
-## When to Apply
-
-Use this skill when the user wants to:
-- Deploy their ClickHouse application to production
-- Host ClickHouse as a managed cloud service
-- Migrate from a local ClickHouse setup to ClickHouse Cloud
-- Create a ClickHouse Cloud service
-- Set up ClickHouse Cloud for the first time
-
----
+Deploying to ClickHouse Cloud with `clickhousectl`: account setup, CLI authentication, service creation, schema migration, and connecting the application. Follow these steps in order.
 
 ## Step 1: Sign up for ClickHouse Cloud
 
@@ -38,23 +18,9 @@ Before using any cloud commands, the user needs a ClickHouse Cloud account.
 
 **Wait for the user to confirm** they have signed up or already have an account before proceeding.
 
----
-
 ## Step 2: Authenticate the CLI
 
-First, ensure `clickhousectl` is installed. Check with:
-
-```bash
-which clickhousectl
-```
-
-If not found, install it:
-
-```bash
-curl -fsSL https://clickhouse.com/cli | sh
-```
-
-Authenticate `clickhousectl` with a ClickHouse Cloud API key.
+Authenticate `clickhousectl` with a ClickHouse Cloud API key. Write operations (creating services, users, etc.) require API key auth — OAuth login is read-only.
 
 ### Create an API key
 
@@ -73,22 +39,19 @@ Guide the user through creating one in the ClickHouse Cloud console:
 Ask the user to **open a new terminal tab in the same working directory** and run the login command there with their Key ID and Secret — this keeps the secret out of the chat session. Tell them to come back and let you know once it's done.
 
 ```bash
-clickhousectl cloud login --api-key <key> --api-secret <secret>
+clickhousectl cloud auth login --api-key <key> --api-secret <secret>
 ```
 
 Both `--api-key` and `--api-secret` are required — if the user only has one, tell them both are needed.
 
----
-
 **To verify authentication works:**
 
 ```bash
+clickhousectl cloud auth status
 clickhousectl cloud org list
 ```
 
 This should return the user's organization.
-
----
 
 ## Step 3: Create a cloud service
 
@@ -106,11 +69,9 @@ Then poll until the service state is `running`:
 clickhousectl cloud service get <service-id>
 ```
 
----
-
 ## Step 4: Migrate schemas
 
-If the user has local table definitions (e.g., from using the `clickhousectl-local-dev` skill), migrate them to the cloud service.
+If the user has local table definitions (e.g., from the local workflow in [local.md](local.md)), migrate them to the cloud service.
 
 Use `cloud service query` to run SQL against the cloud service over HTTP. Just pass the service name (or `--id`).
 
@@ -132,8 +93,6 @@ clickhousectl cloud service query --name <service-name> \
 
 To target a specific database, pass `--database <name>`.
 
----
-
 ## Step 5: Verify the deployment
 
 Connect to the cloud service and confirm tables exist:
@@ -147,8 +106,6 @@ Run a test query to confirm the schema is correct:
 ```bash
 clickhousectl cloud service query --name <service-name> --query "DESCRIBE TABLE <table-name>"
 ```
-
----
 
 ## Step 6: Create a dedicated user for the application
 

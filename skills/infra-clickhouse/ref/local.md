@@ -1,54 +1,8 @@
----
-name: clickhousectl-local-dev
-description: Use when a user wants to build an application with ClickHouse, set up a local ClickHouse development environment, install ClickHouse, create a local server, create tables, or start developing with ClickHouse. Covers the full flow from zero to a working local ClickHouse setup.
-license: Apache-2.0
-metadata:
-  author: ClickHouse Inc
-  version: "0.2.0"
----
+# Local ClickHouse for development
 
-# Local ClickHouse Development Setup
+Setting up a complete local ClickHouse development environment with `clickhousectl`. Follow these steps in order.
 
-This skill walks through setting up a complete local ClickHouse development environment using `clickhousectl`. Follow these steps in order.
-
-## When to Apply
-
-Use this skill when the user wants to:
-- Build an application that needs an analytical database or ClickHouse specifically
-- Set up a local ClickHouse instance for development
-- Install ClickHouse on their machine
-- Create tables and start querying ClickHouse locally
-- Prototype or experiment with ClickHouse
-
----
-
-## Step 1: Install clickhousectl
-
-Check if `clickhousectl` is already available:
-
-```bash
-which clickhousectl
-```
-
-If not found, install it:
-
-```bash
-curl -fsSL https://clickhouse.com/cli | sh
-```
-
-This installs `clickhousectl` to `~/.local/bin/clickhousectl` and creates a `chctl` alias.
-
-**If the command is still not found after install:** The user may need to add `~/.local/bin` to their PATH or open a new terminal session. Suggest:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Once installed, `clickhousectl skills` can be used to install the latest ClickHouse Agent Skills.
-
----
-
-## Step 2: Install ClickHouse and set the default
+## Step 1: Install ClickHouse and set the default
 
 Install the latest ClickHouse version and set it as the system default:
 
@@ -60,9 +14,7 @@ This installs ClickHouse, sets it as the default version used by `clickhousectl 
 
 You can use other version specifiers like `stable`, `26.4`, `26.4.2.10` when needed.
 
----
-
-## Step 3: Initialize the project
+## Step 2: Initialize the project
 
 From the user's project root directory:
 
@@ -82,9 +34,7 @@ clickhouse/
 
 **Note:** This step is optional. If the user already has their own folder structure for SQL files, skip this and adapt the later steps to use their paths.
 
----
-
-## Step 4: Start a local server
+## Step 3: Start a local server
 
 ```bash
 clickhousectl local server start --name <name>
@@ -98,9 +48,7 @@ This starts a ClickHouse server in the background.
 clickhousectl local server list
 ```
 
----
-
-## Step 5: Create the schema
+## Step 4: Create the schema
 
 Based on the user's application requirements, write CREATE TABLE SQL files.
 
@@ -129,9 +77,7 @@ When designing schemas, if the `clickhouse-best-practices` skill is available, c
 clickhousectl local client --name <name> --queries-file clickhouse/tables/events.sql
 ```
 
----
-
-## Step 6: Seed data (optional)
+## Step 5: Seed data (optional)
 
 If the user needs sample data for development, write INSERT statements to `clickhouse/seed/`:
 
@@ -151,9 +97,7 @@ INSERT INTO events (timestamp, user_id, event_type, properties) VALUES
 clickhousectl local client --name <name> --queries-file clickhouse/seed/events.sql
 ```
 
----
-
-## Step 7: Verify the setup
+## Step 6: Verify the setup
 
 Confirm tables were created:
 
@@ -167,6 +111,6 @@ Run a test query:
 clickhousectl local client --name <name> --query "SELECT count() FROM events"
 ```
 
----
+## Going to production
 
-If the user wants to use a managed ClickHouse service, use the `clickhousectl-cloud-deploy` skill to help the user deploy to ClickHouse Cloud.
+When the user is ready to move from local development to a managed ClickHouse Cloud service, read [cloud.md](cloud.md) — it covers authentication, creating the service, migrating the local schema, and connecting the application.
