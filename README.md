@@ -99,21 +99,21 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* â€
 
 **For agents:** The skill activates when you write SQL queries against files, use ClickHouse table functions, build stateful analytical pipelines, or use advanced ClickHouse SQL features.
 
-### clickhousectl Local Dev
+### Infra ClickHouse
 
-**Step-by-step workflow** for setting up a local ClickHouse development environment using [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). Covers installing the CLI, installing ClickHouse, initializing a project, starting a server, creating schemas, seeding data, and verifying the setup.
+**Local and cloud workflows** for running ClickHouse with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-clickhouse/ref/local.md) for local development (install ClickHouse, start a server, create schemas, seed data) and [`ref/cloud.md`](./skills/infra-clickhouse/ref/cloud.md) for ClickHouse Cloud (authenticate, create a service, migrate schemas, connect an application). The local workflow hands off to cloud when going to production. Supersedes `clickhousectl-local-dev` and `clickhousectl-cloud-deploy`.
 
-**Location:** [`skills/clickhousectl-local-dev/`](./skills/clickhousectl-local-dev/)
+**Location:** [`skills/infra-clickhouse/`](./skills/infra-clickhouse/)
 
-**For agents:** The skill activates when a user wants to build an application with ClickHouse, set up a local development environment, install ClickHouse, or start developing with ClickHouse from zero.
+**For agents:** The skill activates when a user wants to build an application with ClickHouse, set up a local development environment, deploy to production, or manage a ClickHouse Cloud service.
 
-### clickhousectl Cloud Deploy
+### Infra Postgres
 
-**Step-by-step workflow** for deploying to ClickHouse Cloud using [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). Covers signing up for ClickHouse Cloud, authenticating the CLI, creating a cloud service, migrating local schemas, and connecting an application to the cloud service.
+**Local and cloud workflows** for running Postgres with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-postgres/ref/local.md) for local Docker-backed Postgres development (start, psql client, `.env` wiring, lifecycle) and [`ref/cloud.md`](./skills/infra-postgres/ref/cloud.md) for managed ClickHouse Cloud Postgres services (beta) â€” authentication, service creation, connections and TLS, runtime configuration, read replicas, failover, and point-in-time restore. The local workflow hands off to cloud when going to production.
 
-**Location:** [`skills/clickhousectl-cloud-deploy/`](./skills/clickhousectl-cloud-deploy/)
+**Location:** [`skills/infra-postgres/`](./skills/infra-postgres/)
 
-**For agents:** The skill activates when a user wants to deploy ClickHouse to production, host a managed ClickHouse service, or migrate from a local setup to ClickHouse Cloud.
+**For agents:** The skill activates when a user wants to set up a local Postgres for development, connect an application to Postgres, or create and manage a managed Postgres service in ClickHouse Cloud.
 
 ### ClickStack OTel Collector
 
@@ -137,8 +137,8 @@ After installation, your AI agent will reference these skills when:
 - Analyzing data with pandas-style DataStore API
 - Querying files or databases with chdb SQL
 - Joining data across different sources (MySQL + S3 + local files)
-- Setting up a local ClickHouse development environment with `clickhousectl`
-- Deploying to ClickHouse Cloud with `clickhousectl`
+- Setting up a local ClickHouse development environment or deploying to ClickHouse Cloud with `clickhousectl`
+- Setting up a local Postgres or a managed ClickHouse Cloud Postgres service with `clickhousectl`
 - Wiring an OpenTelemetry collector into Managed ClickStack
 
 Example prompts:

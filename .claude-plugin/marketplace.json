@@ -111,10 +111,10 @@
       "category": "database"
     },
     {
-      "name": "clickhousectl-local-dev",
-      "source": "./skills/clickhousectl-local-dev/",
-      "description": "Step-by-step workflow for setting up a local ClickHouse development environment using clickhousectl — installing the CLI, installing ClickHouse, initializing a project, starting a server, creating schemas, seeding data, and verifying the setup",
-      "version": "0.2.0",
+      "name": "infra-clickhouse",
+      "source": "./skills/infra-clickhouse/",
+      "description": "Local and cloud workflows for running ClickHouse with clickhousectl — local development (install ClickHouse, start a server, create schemas, seed data) and ClickHouse Cloud deployment (authenticate, create a service, migrate schemas, connect an application), with a decision tree routing between them",
+      "version": "0.3.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -126,15 +126,16 @@
         "clickhousectl",
         "database",
         "local-development",
-        "setup"
+        "cloud",
+        "deployment"
       ],
       "category": "database"
     },
     {
-      "name": "clickhousectl-cloud-deploy",
-      "source": "./skills/clickhousectl-cloud-deploy/",
-      "description": "Step-by-step workflow for deploying to ClickHouse Cloud using clickhousectl — signing up, authenticating the CLI, creating a cloud service, migrating local schemas, and connecting an application",
-      "version": "0.2.0",
+      "name": "infra-postgres",
+      "source": "./skills/infra-postgres/",
+      "description": "Local and cloud workflows for running Postgres with clickhousectl — local Docker-backed Postgres for development (start, psql client, .env wiring, lifecycle) and managed ClickHouse Cloud Postgres services, beta (authentication, service creation, connections and TLS, runtime config, read replicas, failover, point-in-time restore), with a decision tree routing between them",
+      "version": "0.1.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -144,9 +145,9 @@
       "keywords": [
         "clickhouse",
         "clickhousectl",
+        "postgres",
         "database",
-        "cloud",
-        "deployment"
+        "cloud"
       ],
       "category": "database"
     },

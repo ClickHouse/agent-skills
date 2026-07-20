@@ -1,0 +1,11 @@
+{
+  "version": "0.3.0",
+  "organization": "ClickHouse Inc",
+  "date": "July 2026",
+  "abstract": "Workflows for running ClickHouse with clickhousectl, covering both local and cloud. Local: setting up a development environment — installing ClickHouse, initializing a project, starting a server, creating schemas, seeding data, and verifying the setup. Cloud: deploying to ClickHouse Cloud — signing up, authenticating the CLI, creating a service, migrating local schemas, and connecting an application with a dedicated user. The top-level skill routes between ref/local.md and ref/cloud.md, and the local workflow hands off to cloud when going to production. Supersedes the clickhousectl-local-dev and clickhousectl-cloud-deploy skills.",
+  "references": [
+    "https://clickhouse.com/docs",
+    "https://github.com/ClickHouse/clickhousectl",
+    "https://clickhouse.cloud"
+  ]
+}
