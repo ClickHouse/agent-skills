@@ -11,6 +11,8 @@ tags: [query, ReplacingMergeTree, deduplication, FINAL, argMax, LIMIT BY, soft-d
 
 `ReplacingMergeTree` deduplicates asynchronously, only when parts merge. Until then a plain `SELECT` can return duplicate rows, outdated versions, and rows already marked deleted. Use one of the three patterns below. Note that row identity is the **`ORDER BY` tuple**, not `PRIMARY KEY` and not an `id` column — every pattern must key on that whole tuple.
 
+Read the target table's DDL before writing the query. The `version` and `is_deleted` names used below are illustrative: substitute the table's actual version column and delete flag, and confirm it has a delete flag at all — many `ReplacingMergeTree` tables have none, and copying these identifiers verbatim yields an unknown-column error.
+
 **Incorrect (raw SELECT, no deduplication):**
 
 ```sql
