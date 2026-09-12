@@ -1,26 +1,16 @@
 # ClickHouse Cloud
 
-Deploying to ClickHouse Cloud with `clickhousectl`: account setup, CLI authentication, service creation, schema migration, and connecting the application. Follow these steps in order.
+Deploying to ClickHouse Cloud with `clickhousectl`: account setup, CLI authentication, service creation, schema migration, and connecting the application. Use only the steps needed for the requested operation; the full sequence is for a new deployment.
 
-## Step 1: Sign up for ClickHouse Cloud
+## Existing context first
 
-Before using any cloud commands, the user needs a ClickHouse Cloud account.
+Inspect the task's service ID/name, project endpoint and `clickhousectl cloud auth status`. Reuse working authentication and the requested service. A schema change or connection task does not require a new account, service or application identity.
 
-**Ask the user:** "Do you already have a ClickHouse Cloud account?"
-
-**If they do not have an account**, explain:
-
-> ClickHouse Cloud is a fully managed service that runs ClickHouse for you — no infrastructure to maintain, automatic scaling, backups, and upgrades included. There's a free trial so you can get started without a credit card.
->
-> To create an account, go to: **https://clickhouse.cloud**
->
-> Sign up with your email, Google, or GitHub account. Once you're in the console, let me know and we'll continue with the next step.
-
-**Wait for the user to confirm** they have signed up or already have an account before proceeding.
+If no account exists and Cloud setup is requested, direct the user to [ClickHouse Cloud](https://clickhouse.cloud). Ask them to complete signup only when it blocks the requested operation. Avoid hard-coding trial or pricing promises.
 
 ## Step 2: Authenticate the CLI
 
-Authenticate `clickhousectl` with a ClickHouse Cloud API key. Write operations (creating services, users, etc.) require API key auth — OAuth login is read-only.
+If existing authentication is insufficient for the operation, authenticate `clickhousectl` with a ClickHouse Cloud API key. Write operations (creating services, users, etc.) require API key auth — OAuth login is read-only.
 
 ### Create an API key
 
@@ -55,7 +45,7 @@ This should return the user's organization.
 
 ## Step 3: Create a cloud service
 
-Create a new ClickHouse Cloud service:
+For an authorized new deployment, resolve organization, region and sizing from the task or ask for missing consequential choices. Check the installed `service create --help` for the corresponding options. For an existing service, skip creation. After a timeout, list/get services to determine whether creation succeeded before retrying. The minimal creation command is:
 
 ```bash
 clickhousectl cloud service create --name <service-name>
@@ -63,7 +53,7 @@ clickhousectl cloud service create --name <service-name>
 
 From the output, add the HTTPS host and port to `.env` as `CLICKHOUSE_HOST` and `CLICKHOUSE_PORT`. Make sure `.env` is gitignored.
 
-Then poll until the service state is `running`:
+Poll with a bounded deadline until the service state is `running`; report a failure state or timeout instead of creating another service:
 
 ```bash
 clickhousectl cloud service get <service-id>
@@ -75,7 +65,7 @@ If the user has local table definitions (e.g., from the local workflow in [local
 
 Use `cloud service query` to run SQL against the cloud service over HTTP. Just pass the service name (or `--id`).
 
-**Read the local schema files** from `clickhouse/tables/` and apply each one to the cloud service:
+Read the project's migration/schema files and compare them with target DDL. Review compatibility and dependency order; do not assume `IF NOT EXISTS` migrates an existing table. Apply only the requested migration to the resolved service, preferably by ID. In the example layout:
 
 ```bash
 clickhousectl cloud service query --name <service-name> \
@@ -101,7 +91,7 @@ Connect to the cloud service and confirm tables exist:
 clickhousectl cloud service query --name <service-name> --query "SHOW TABLES"
 ```
 
-Run a test query to confirm the schema is correct:
+Inspect table definitions; this checks structure, not migration completeness or application behavior:
 
 ```bash
 clickhousectl cloud service query --name <service-name> --query "DESCRIBE TABLE <table-name>"
@@ -109,21 +99,28 @@ clickhousectl cloud service query --name <service-name> --query "DESCRIBE TABLE 
 
 ## Step 6: Create a dedicated user for the application
 
-The `default` user has full admin rights and should not be used by the application. Create a dedicated user scoped to the schema deployed in Step 4.
+Reuse an existing suitably scoped application identity. For a new app identity, grant the minimum needed on the deployed schema; avoid using an administrative identity for application traffic. Check for an existing `app_user` before creation, and do not reset its credentials on a retry.
 
-Generate a strong random password and append the credentials to `.env` **before** creating the user, so the password is persisted even if a subsequent step fails:
+For a new identity, persist the password privately before creating the user. Merge with the project's existing secret mechanism; never duplicate credential keys or overwrite other `.env` values. Ensure `.env` is gitignored. This local example stops when credentials already exist:
 
 ```bash
-PASSWORD=$(openssl rand -base64 32)
-echo "CLICKHOUSE_USER=app_user" >> .env
-echo "CLICKHOUSE_PASSWORD=$PASSWORD" >> .env
+if [ -f .env ] && grep -Eq '^CLICKHOUSE_(USER|PASSWORD)=' .env; then
+  printf '%s\n' 'Reuse the existing credentials or explicitly plan a rotation.' >&2
+  exit 1
+fi
+PASSWORD="$(openssl rand -hex 32)Aa1-"
+( umask 177
+  printf 'CLICKHOUSE_USER=app_user\nCLICKHOUSE_PASSWORD=%s\n' "$PASSWORD" >> .env
+)
+chmod 600 .env
+PW_HASH=$(printf %s "$PASSWORD" | openssl dgst -sha256 | awk '{print $NF}')
 ```
 
-Then create the user and grant the minimum permissions the app needs. Replace `<database>` with the database the schema lives in (often `default`):
+Use a locally computed hash in SQL so query errors do not echo the plaintext password. Treat the hash as sensitive too and sanitize error output. Replace `<database>` with the resolved database:
 
 ```bash
 clickhousectl cloud service query --name <service-name> --query \
-  "CREATE USER app_user IDENTIFIED BY '$PASSWORD'"
+  "CREATE USER app_user IDENTIFIED WITH sha256_hash BY '$PW_HASH'"
 
 clickhousectl cloud service query --name <service-name> --query \
   "GRANT SELECT, INSERT ON <database>.* TO app_user"
@@ -141,8 +138,8 @@ Verify the user exists and has the expected grants:
 clickhousectl cloud service query --name <service-name> --query "SHOW GRANTS FOR app_user"
 ```
 
-ClickHouse cannot reveal the password later, so if `.env` is lost, the user must reset the password via `ALTER USER app_user IDENTIFIED BY '<new>'`.
+If credentials are lost, use the existing secret store or plan an authorized rotation that updates dependent applications. Do not place replacement plaintext passwords in logged SQL.
 
 ---
 
-The application can now use the credentials in `.env` to connect to ClickHouse Cloud.
+Verify a connection with the application identity and its expected operations before reporting success. Summarize the service, schema changes, config location and verification evidence without credentials. Schema deployment alone does not migrate historical data; include a separate data migration and cutover plan when that is requested.

@@ -113,8 +113,8 @@
     {
       "name": "infra-clickhouse",
       "source": "./skills/infra-clickhouse/",
-      "description": "Local and cloud workflows for running ClickHouse with clickhousectl — local development (install ClickHouse, start a server, create schemas, seed data) and ClickHouse Cloud deployment (authenticate, create a service, migrate schemas, connect an application), with a decision tree routing between them",
-      "version": "0.3.0",
+      "description": "Set up or operate a local ClickHouse server or ClickHouse Cloud service with clickhousectl, including connections and requested schema migrations.",
+      "version": "0.4.0",
       "author": {
         "name": "ClickHouse Inc"
       },

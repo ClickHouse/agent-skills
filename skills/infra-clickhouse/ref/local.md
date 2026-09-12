@@ -1,18 +1,18 @@
 # Local ClickHouse for development
 
-Setting up a complete local ClickHouse development environment with `clickhousectl`. Follow these steps in order.
+Setting up a complete local ClickHouse development environment with `clickhousectl`. For a fresh setup, use the steps below. For an existing project, perform only the requested operation and its missing prerequisites.
 
 ## Step 1: Install ClickHouse and set the default
 
-Install the latest ClickHouse version and set it as the system default:
+Check the existing local servers and project version first. Reuse a suitable server and pinned version. For a new installation without a version requirement, the following selects the current stable channel:
 
 ```bash
-clickhousectl local use latest
+clickhousectl local use stable
 ```
 
 This installs ClickHouse, sets it as the default version used by `clickhousectl local` commands, and symlinks `~/.local/bin/clickhouse` to the binary, putting `clickhouse` on your PATH (meaning you can invoke `clickhouse` directly, e.g. `clickhouse client` if needed).
 
-You can use other version specifiers like `stable`, `26.4`, `26.4.2.10` when needed.
+Use a supported exact version specifier when matching production or a project pin. `local use` changes the CLI default and the user-level symlink; do not run it for an unrelated SQL/code task or silently replace a required version.
 
 ## Step 2: Initialize the project
 
@@ -40,7 +40,7 @@ clickhouse/
 clickhousectl local server start --name <name>
 ```
 
-This starts a ClickHouse server in the background.
+This starts a ClickHouse server in the background. Inspect `local server list` before creating another server; reuse the requested instance and check port conflicts.
 
 **To check running servers and see their exposed ports:**
 
@@ -52,7 +52,7 @@ clickhousectl local server list
 
 Based on the user's application requirements, write CREATE TABLE SQL files.
 
-**Write each table definition to its own file** in `clickhouse/tables/`:
+Follow the project's migration layout. For a new project, one table definition per file in `clickhouse/tables/` is a useful convention:
 
 ```bash
 # Example: clickhouse/tables/events.sql
@@ -71,7 +71,7 @@ ORDER BY (event_type, timestamp)
 
 When designing schemas, if the `clickhouse-best-practices` skill is available, consult it for guidance on ORDER BY column selection, data types, and partitioning.
 
-**Apply the schema to the running server:**
+Compare with existing DDL before applying a requested migration; `IF NOT EXISTS` does not update a different existing definition. Apply to the identified server:
 
 ```bash
 clickhousectl local client --name <name> --queries-file clickhouse/tables/events.sql
@@ -79,7 +79,7 @@ clickhousectl local client --name <name> --queries-file clickhouse/tables/events
 
 ## Step 5: Seed data (optional)
 
-If the user needs sample data for development, write INSERT statements to `clickhouse/seed/`:
+If the user needs sample data for development, use a disposable development table and avoid duplicating prior seed rows on retry. Write INSERT statements to `clickhouse/seed/`:
 
 ```bash
 # Example: clickhouse/seed/events.sql
@@ -99,7 +99,7 @@ clickhousectl local client --name <name> --queries-file clickhouse/seed/events.s
 
 ## Step 6: Verify the setup
 
-Confirm tables were created:
+Verify the part of the setup changed by this task. For the example schema, confirm tables were created:
 
 ```bash
 clickhousectl local client --name <name> --query "SHOW TABLES"
