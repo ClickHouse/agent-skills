@@ -134,8 +134,8 @@
     {
       "name": "infra-postgres",
       "source": "./skills/infra-postgres/",
-      "description": "Local and cloud workflows for running Postgres with clickhousectl — local Docker-backed Postgres for development (start, psql client, .env wiring, lifecycle) and managed ClickHouse Cloud Postgres services, beta (authentication, service creation, connections and TLS, runtime config, read replicas, failover, point-in-time restore), with a decision tree routing between them",
-      "version": "0.1.0",
+      "description": "Set up or operate local Docker-backed Postgres or ClickHouse Cloud Postgres with clickhousectl, including connections, configuration, replicas and restore.",
+      "version": "0.2.0",
       "author": {
         "name": "ClickHouse Inc"
       },
