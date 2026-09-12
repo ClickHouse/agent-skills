@@ -1,50 +1,18 @@
 ---
-title: Never mutate the instance — write the fix, explain it, and let a human apply it
+title: Keep diagnosis separate from applying a fix
 impact: CRITICAL
 tags:
   - safety
   - recommend-only
-  - guardrail
   - boundary
 ---
 
-# Recommend-only boundary
+# Diagnostic boundary
 
-This skill never executes mutations on the Postgres instance.
+A performance investigation authorizes evidence collection and recommendations, not changes to the database. Within this RCA workflow, do not execute DDL/DML, maintenance commands, cancel queries, or change configuration, roles, or extensions.
 
-## Never do
+Write a proposed fix only when the evidence supports it. Identify assumptions that need confirmation, and distinguish SQL suggested from commands actually run. Do not imply that a candidate index is ready for production solely because an IO ratio is high.
 
-- Run `CREATE INDEX`, `ALTER`, `DROP`, `VACUUM`, `ANALYZE`,
-  `REINDEX`, or any other DDL/DML on the user's instance.
-- Call `pg_cancel_backend` or `pg_terminate_backend`.
-- Modify any configuration, role, or extension.
-- Open a `psql` session to the user's instance and run
-  commands inside it on their behalf.
+If the user separately requests implementation, treat that as a new scope: use appropriate implementation tools, verify the target and relevant schema/plan, and apply the user's authorization and operational safeguards. Do not refuse solely because this diagnostic skill is recommend-only, and do not infer approval from the original diagnosis request.
 
-## What you do instead
-
-Write the exact SQL the human should run, explain why, and
-state explicitly that you did not run it. Use the structure
-in `rules/output-template.md`.
-
-## If the user asks you to apply the fix
-
-Decline and explain. Example response:
-
-> I can't apply the fix on your instance — this skill is
-> recommend-only by contract. The SQL above is ready to copy;
-> you can run it from `psql` or whatever client you use. I'm
-> happy to help interpret the result or roll back if it
-> doesn't behave as expected.
-
-The point of the boundary is that an agent reasoning from
-incomplete information (no plans, no full table stats)
-shouldn't be mutating production. The recommendation may be
-right but a human should sanity-check the call.
-
-## Read-only operations are fine
-
-The two API calls this skill makes — Prometheus scrape and
-slow-query-patterns list — are read-only. You can re-scrape
-or re-list freely to confirm a fix took effect after the
-human applies it.
+Read-only API calls can confirm a fix after it is applied. Reuse the same incident/comparison windows and report what changed rather than repeating diagnostics without a purpose.

@@ -1,5 +1,5 @@
 ---
-title: Structure every RCA response as symptom, evidence, hypothesis, recommendation, and follow-ups
+title: Example structure for a full RCA report
 impact: MEDIUM
 tags:
   - output
@@ -10,7 +10,7 @@ tags:
 
 # Output template
 
-Every RCA response uses this structure. Do not deviate.
+Use this structure when a full RCA report is helpful. Adapt it to the user’s request; a focused follow-up need not repeat every section.
 
 ````markdown
 ## Symptom
@@ -72,12 +72,6 @@ One sentence on why this action addresses the diagnosed cause.
 - <bullet — e.g., add a CI check that flags new ORM-generated
   per-row queries>
 
-## What I did NOT do
-
-- I did not run any DDL.
-- I did not cancel or kill any queries.
-- I did not modify any application code or configuration.
-- A human should review the recommendation above and apply it.
 ````
 
 ## Style rules
@@ -85,10 +79,9 @@ One sentence on why this action addresses the diagnosed cause.
 - Quote real values from the API response, not hand-waved
   numbers.
 - For DDL recommendations, default to `CREATE INDEX
-  CONCURRENTLY` — never block writes on a running instance.
+  CONCURRENTLY` when minimizing write blocking is required; describe its operational constraints rather than claiming it takes no locks.
 - For application-side recommendations, be specific about
-  what to grep / look for in the codebase, since you cannot
-  see it directly.
+  what to inspect in the codebase; use available code evidence rather than assuming it is inaccessible.
 - If you cannot fully diagnose from the data available, say
   so. Surface what you saw and ask for the missing piece
   rather than overreaching.

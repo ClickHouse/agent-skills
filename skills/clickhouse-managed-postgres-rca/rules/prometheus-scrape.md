@@ -36,14 +36,13 @@ left for Prom is system-level context.
 Gauges to read on the single scrape:
 
 - `PostgresServer_CacheHitRatio` — current ratio. Below ~95%
-  on a workload that should fit in cache = cache thrash.
+  on a workload that should fit in cache can suggest cache pressure; it is not a diagnosis by itself.
 - `PostgresServer_ActiveConnections` — current count (often
   split by `state` label: active / idle / idle in transaction).
   Climbing toward a known pool ceiling = client fan-out or
   stuck queries.
 - `PostgresServer_MemoryUsedPercent` — current. Helps qualify
-  cache hit ratio (low memory usage but bad hit ratio = the
-  workload is bigger than RAM).
+  cache hit ratio; low memory utilization plus misses does not alone prove the workload exceeds RAM.
 - `PostgresServer_FilesystemUsedPercent` — current. High =
   storage pressure, separate concern from query latency.
 
@@ -84,7 +83,7 @@ curl -s -u "$CH_CLOUD_KEY:$CH_CLOUD_SECRET" \
   "https://api.clickhouse.cloud/<resolved path>" > /tmp/pg-prom-2.txt
 ```
 
-Document the gap you used so a reader can sanity-check.
+Document timestamps and the gap. Compare identical label sets and account for counter resets; a negative delta is not negative activity. While waiting, analyze independent evidence and keep the user informed.
 
 ## What this surface does NOT show
 

@@ -36,7 +36,7 @@ The slow-query endpoint requires a time window:
 - `from_date` — ISO 8601 UTC date-time.
 - `to_date` — ISO 8601 UTC date-time.
 
-For RCA, default to the last 15 minutes.
+Use the reported incident window; absent one, a clearly stated last-15-minute window is a starting point.
 
 ## Useful optional query params
 
@@ -123,12 +123,14 @@ cache_hit_ratio = <blocks_served_from_cache>
                 / max(<blocks_served_from_cache> + <blocks_read_from_disk>, 1)
 ```
 
-Per-call IO ratio for the full-scan heuristic:
+Blocks-touched-per-returned-row ratio for the read-path heuristic:
 
 ```
 blks_touched_per_row = (<blocks_served_from_cache> + <blocks_read_from_disk>)
                      / max(<total_rows>, 1)
 ```
+
+When the denominator is zero, report the ratio as undefined and inspect counts separately; the max(..., 1) formula is only a display convenience.
 
 Use **total blocks touched** (hit + read), not just disk reads.
 A hot table fully resident in cache still produces a high
@@ -144,21 +146,9 @@ Patterns response with high `callCount` (one per probe
 interval) but `totalDurationUs ≈ 0` and zero IO. They don't
 affect the diagnosis but waste top-N slots.
 
-**Two-step filter:**
+Request enough patterns to retain the user workload. Identify likely internal probes from normalized query text, application/user labels where available, and negligible resource use together. Do not discard every pattern below a fixed duration threshold: a low-volume failure or rare high-latency call may be the incident.
 
-1. Ask for `limit=10` (or higher) on the request so the
-   user-traffic patterns survive even if internal probes fill
-   the top slots.
-2. Post-filter the response — skip any pattern where
-   `totalDurationUs` is below, say, 1,000,000 (1s aggregate
-   over the window). Real user-traffic patterns will always
-   clear that threshold; internal probes won't.
-
-```python
-patterns = [p for p in resp['result'] if p['totalDurationUs'] >= 1_000_000]
-```
-
-Then take the top 3 by `totalDurationUs` from what remains.
+Prioritize by the symptom (aggregate cost, tail latency, or errors) and show the relevant patterns. Use resolved field names from the role map rather than a hardcoded historical name.
 
 The `app` filter param accepts equality only (no
 `app != bin/monitor`), so server-side filtering doesn't work
