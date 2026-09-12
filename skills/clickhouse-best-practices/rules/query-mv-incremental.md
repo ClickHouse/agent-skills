@@ -1,7 +1,7 @@
 ---
 title: Use Incremental MVs for Real-Time Aggregations
 impact: HIGH
-impactDescription: "Read thousands of rows instead of billions; minimal cluster overhead"
+impactDescription: "Read thousands of rows instead of billions; insert-time work depends on the view and workload"
 tags: [query, materialized-view, aggregation, real-time]
 ---
 
@@ -21,7 +21,7 @@ SELECT
     count() as events,
     uniq(user_id) as unique_users
 FROM events
-WHERE timestamp >= now() - INTERVAL 7 DAY
+WHERE timestamp >= toStartOfHour(now()) - INTERVAL 7 DAY
 GROUP BY event_type, hour;
 -- Scans 7 days of data every time (billions of rows)
 ```
@@ -55,7 +55,7 @@ SELECT
     countMerge(events) as events,
     uniqMerge(unique_users) as unique_users
 FROM events_hourly
-WHERE hour >= now() - INTERVAL 7 DAY
+WHERE hour >= toStartOfHour(now()) - INTERVAL 7 DAY
 GROUP BY event_type, hour;
 -- Reads thousands of rows instead of billions
 ```
@@ -63,6 +63,6 @@ GROUP BY event_type, hour;
 **Key points:**
 - Use `-State` functions in MV, `-Merge` functions in query
 - Incremental - existing data not automatically included (backfill separately)
-- Minimal cluster overhead at insert time
+- Measure insert overhead and target size. The example compares complete hour buckets; exact partial-hour windows require retaining finer-grained data.
 
 Reference: [Use Materialized Views](https://clickhouse.com/docs/best-practices/use-materialized-views)

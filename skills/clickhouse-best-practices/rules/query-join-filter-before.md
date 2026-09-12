@@ -11,17 +11,17 @@ tags: [query, JOIN, filtering, subquery]
 
 Joining full tables then filtering wastes resources. Add filtering in `WHERE` or `JOIN ON` clauses. If automatic pushdown fails, restructure as a subquery.
 
-**Incorrect (join then filter):**
+**Example (let the optimizer push down filters):**
 
 ```sql
--- Joins entire tables, then filters
+-- WHERE syntax does not imply that filtering happens after the JOIN
 SELECT o.order_id, c.name, o.total
 FROM orders o
 JOIN customers c ON c.id = o.customer_id
 WHERE o.created_at > '2024-01-01' AND c.country = 'US';
 ```
 
-**Correct (filter in subqueries before joining):**
+**Example (rewrite if EXPLAIN shows pushdown is missing):**
 
 ```sql
 -- Filter in subqueries before joining
@@ -38,7 +38,7 @@ JOIN (
 ) c ON c.id = o.customer_id;
 ```
 
-**Even better - aggregate before joining:**
+**Example (aggregate first when the requested result is revenue by customer):**
 
 ```sql
 SELECT c.country, o.total_revenue

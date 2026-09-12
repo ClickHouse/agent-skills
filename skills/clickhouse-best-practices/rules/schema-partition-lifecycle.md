@@ -19,7 +19,7 @@ Partitioning is **primarily a data management technique, not a query optimizatio
 
 ```sql
 -- Cannot efficiently drop old data by time
-CREATE TABLE events (...)
+CREATE TABLE events (timestamp DateTime, event_type LowCardinality(String))
 ENGINE = MergeTree()
 PARTITION BY event_type  -- No time alignment
 ORDER BY (timestamp);
@@ -38,13 +38,13 @@ CREATE TABLE events (
 ENGINE = MergeTree()
 PARTITION BY toStartOfMonth(timestamp)
 ORDER BY (event_type, timestamp)
-TTL timestamp + INTERVAL 1 YEAR DELETE;  -- Drops whole partitions
+TTL timestamp + INTERVAL 1 YEAR DELETE;  -- Expiration is applied during merges
 
 -- Fast: metadata-only operation
-ALTER TABLE events DROP PARTITION '202301';
+ALTER TABLE events DROP PARTITION '2023-01-01';
 
 -- Archive to cold storage
-ALTER TABLE events_archive ATTACH PARTITION '202301' FROM events;
+ALTER TABLE events_archive ATTACH PARTITION '2023-01-01' FROM events;
 ```
 
 Reference: [Choosing a Partitioning Key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)

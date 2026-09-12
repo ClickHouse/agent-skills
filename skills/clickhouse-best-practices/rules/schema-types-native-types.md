@@ -20,7 +20,7 @@ CREATE TABLE events (
     created_at String,      -- "2024-01-15 10:30:00" = 19 bytes
     count String,           -- "42" - can't do math!
     is_active String        -- "true" = 4 bytes
-)
+) ENGINE = Memory;
 ```
 
 **Correct (native types):**
@@ -32,7 +32,7 @@ CREATE TABLE events (
     created_at DateTime DEFAULT now(),           -- 4 bytes (vs 19)
     count UInt32 DEFAULT 0,                      -- 4 bytes, math works
     is_active Bool DEFAULT true                  -- 1 byte (vs 4)
-)
+) ENGINE = Memory;
 ```
 
 **Type Selection Quick Reference:**
@@ -42,7 +42,7 @@ CREATE TABLE events (
 | Sequential IDs | UInt32/UInt64 | String |
 | UUIDs | UUID | String |
 | Status/Category | Enum8 or LowCardinality(String) | String |
-| Timestamps | DateTime | DateTime64, String |
+| Timestamps | DateTime for seconds; DateTime64 for subsecond precision/range | String when time operations are needed |
 | Dates only | Date or Date32 | DateTime, String |
 | Counts | UInt8/16/32 (smallest that fits) | Int64, String |
 | Money | Decimal(P,S) or Int64 (cents) | Float64, String |

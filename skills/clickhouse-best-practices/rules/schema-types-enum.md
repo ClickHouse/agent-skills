@@ -16,7 +16,7 @@ Enum types provide validation at insert time and enable queries that exploit nat
 ```sql
 CREATE TABLE orders (
     status String    -- No validation, typos like "shiped" allowed
-)
+) ENGINE = Memory;
 
 -- Ordering requires CASE statements
 SELECT * FROM orders ORDER BY
@@ -32,7 +32,7 @@ SELECT * FROM orders ORDER BY
 ```sql
 CREATE TABLE orders (
     status Enum8('pending' = 1, 'processing' = 2, 'shipped' = 3, 'delivered' = 4)
-)
+) ENGINE = Memory;
 
 -- Insert validation: invalid values rejected
 INSERT INTO orders VALUES ('shiped');  -- ERROR: Unknown element 'shiped'

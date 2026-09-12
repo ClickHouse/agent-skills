@@ -18,15 +18,15 @@ ClickHouse's JSON type splits JSON objects into separate sub-columns, enabling f
 CREATE TABLE events (
     event_id UUID,
     prop_page_url Nullable(String),
-    prop_button_id Nullable(String),
+    prop_button_id Nullable(String)
     -- ... 100 more nullable columns
-)
+) ENGINE = Memory;
 
 -- BAD: JSON as String when you need field queries
 CREATE TABLE events (
     event_id UUID,
     properties String  -- No field-level optimization
-)
+) ENGINE = Memory;
 ```
 
 **Correct (JSON for dynamic, typed for known):**
@@ -70,7 +70,7 @@ CREATE TABLE events (
         amount Float64,
         product_id UInt64
     )
-)
+) ENGINE = Memory;
 ```
 
 Reference: [Use JSON Where Appropriate](https://clickhouse.com/docs/best-practices/use-json-where-appropriate)

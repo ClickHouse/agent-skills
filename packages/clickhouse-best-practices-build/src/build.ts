@@ -42,7 +42,7 @@ function generateMarkdown(
   }
 ): string {
   let md = `# ClickHouse Best Practices\n\n`
-  md += `**Version ${metadata.version}**  \n`
+  md += `**Version ${metadata.version}**\n`
   md += `${metadata.organization}  \n`
   md += `${metadata.date}\n`
   if (metadata.clickhouseVersion) {
@@ -94,30 +94,8 @@ function generateMarkdown(
       md += `**Impact: ${rule.impact}${
         rule.impactDescription ? ` (${rule.impactDescription})` : ''
       }**\n\n`
-      md += `${rule.explanation}\n\n`
+      md += `${rule.body}\n\n`
 
-      rule.examples.forEach((example) => {
-        if (example.description) {
-          md += `**${example.label}: ${example.description}**\n\n`
-        } else {
-          md += `**${example.label}:**\n\n`
-        }
-        // Only generate code block if there's actual code
-        if (example.code && example.code.trim()) {
-          md += `\`\`\`${example.language || 'sql'}\n`
-          md += `${example.code}\n`
-          md += `\`\`\`\n\n`
-        }
-        if (example.additionalText) {
-          md += `${example.additionalText}\n\n`
-        }
-      })
-
-      if (rule.references && rule.references.length > 0) {
-        md += `Reference: ${rule.references
-          .map((ref) => `[${ref}](${ref})`)
-          .join(', ')}\n\n`
-      }
     })
 
     md += `---\n\n`
@@ -158,7 +136,7 @@ async function build() {
         const parsed = await parseRuleFile(filePath)
         ruleData.push(parsed)
       } catch (error) {
-        console.error(`Error parsing ${file}:`, error)
+        throw new Error(`Error parsing ${file}: ${error}`)
       }
     }
 

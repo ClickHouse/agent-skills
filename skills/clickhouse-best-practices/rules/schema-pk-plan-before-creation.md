@@ -1,15 +1,15 @@
 ---
 title: Plan PRIMARY KEY Before Table Creation
 impact: CRITICAL
-impactDescription: "ORDER BY is immutable; wrong choice requires full data migration"
+impactDescription: "Changing physical ordering generally requires a new table and data migration"
 tags: [schema, primary-key, ORDER BY]
 ---
 
 ## Plan PRIMARY KEY Before Table Creation
 
-**Impact: CRITICAL** (immutable after creation)
+**Impact: CRITICAL**
 
-ClickHouse's ORDER BY clause defines physical data ordering and the sparse index. Unlike other databases, **ORDER BY cannot be modified after table creation**. A wrong choice requires creating a new table and migrating all data.
+ORDER BY defines physical ordering; PRIMARY KEY defines the sparse index and defaults to ORDER BY when not specified separately. Plan both around the workload. Reordering existing data generally requires a new table and migration. `ALTER TABLE ... MODIFY ORDER BY` supports constrained metadata-only changes; it does not re-sort existing parts or change the primary key.
 
 **Incorrect (arbitrary ORDER BY without query analysis):**
 
@@ -25,7 +25,7 @@ ORDER BY (event_id);  -- Chosen arbitrarily
 
 -- Later: "Most queries filter by user_id!"
 -- Cannot fix with: ALTER TABLE events MODIFY ORDER BY (user_id, timestamp)
--- ERROR: Cannot modify ORDER BY
+-- Existing user_id/timestamp cannot simply replace the current physical order
 ```
 
 **Correct (query-driven ORDER BY selection):**
@@ -55,10 +55,10 @@ ORDER BY (user_id, event_date, event_id);
 ```
 
 **Pre-creation checklist:**
-- [ ] Listed top 5-10 query patterns
+- [ ] Identified the important query patterns
 - [ ] Identified columns in WHERE clauses with frequency
 - [ ] Prioritized columns that exclude large numbers of rows
-- [ ] Ordered columns by cardinality (low first, high last)
+- [ ] Used cardinality to refine the order among useful filter columns
 - [ ] Limited to 4-5 key columns (typically sufficient)
 
-Reference: [Choosing a Primary Key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
+References: [Choosing a Primary Key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key) · [MODIFY ORDER BY](https://clickhouse.com/docs/sql-reference/statements/alter/order-by)

@@ -9,7 +9,7 @@ tags: [tag1, tag2]
 
 **Impact: CRITICAL** (optional description)
 
-Brief explanation of the rule and why it matters. This should be clear and concise, explaining the performance implications.
+Explain when the recommendation helps, its semantic constraints, and how to verify it. Give applicable versions/settings and a dated source check for version-sensitive claims. Use measured impact only when supported by a benchmark. Conditional examples can replace incorrect/correct labels when both alternatives are valid.
 
 **Incorrect (description of what's wrong):**
 

@@ -9,7 +9,7 @@ tags: [agent, mcp, cli, connectivity, setup]
 
 **Impact: HIGH**
 
-Two connection methods, each with a clear use case. Pick one based on your environment.
+Use an existing authorized MCP, CLI, or HTTP connection when live access is needed. Reuse configured credentials without displaying secrets. Offline review does not need a connection; configuring new integrations or enabling writes is only appropriate when the task calls for it.
 
 **Incorrect (prompting for credentials every time):**
 
@@ -57,22 +57,22 @@ pip install mcp-clickhouse
 | `CLICKHOUSE_PASSWORD` | `your-password` | Database password |
 | `CLICKHOUSE_SECURE` | `true` | Always `true` for Cloud |
 
-Enable writes: `export CLICKHOUSE_ALLOW_WRITE_ACCESS=true`
+Keep read-only access for analysis. If a requested write requires enabling access, first verify that the user authorized that operation; a connection setup example is not permission to enable writes.
 
 **Limitations:**
-- MCP has ~200-500ms overhead per call. For large result sets or batch operations, use CLI.
+- For large result sets or batch operations, consider CLI/HTTP streaming and the available tool limits.
 - MCP's `list_tables` may not surface column `COMMENT` annotations — query `system.columns` directly for full schema context (see `agent-discovery-schema`).
 
-**ClickHouse Cloud note:** Services can be idle/sleeping. The first query after inactivity may take 10-20 seconds while the service wakes up. A timeout or `503` on first connection is expected — retry once before treating it as an error.
+**ClickHouse Cloud note:** Services can be idle/sleeping. The first query after inactivity may take 10-20 seconds while the service wakes up. An initial timeout or `503` may indicate wake-up; a bounded retry of a read can be appropriate. Diagnose persistent errors rather than assuming wake-up.
 
 ### Option B: clickhouse-client (batch operations, large results)
 
-Best for scripting, automation, and queries returning >10K rows. Zero per-call overhead.
+Best for scripting, automation, and queries returning >10K rows. Choose based on the installed tools and output needs.
 
 ```bash
 clickhouse client \
   --host abc123.clickhouse.cloud --port 9440 --secure \
-  --user default --password 'your-password' \
+  --user default --password "$CLICKHOUSE_PASSWORD" \
   --format JSON \
   --max_execution_time 30 \
   --query "SELECT * FROM events LIMIT 100" 2>&1
@@ -96,20 +96,20 @@ Port `8443` is HTTPS. Pass query settings as URL params: `?max_execution_time=30
 1. Go to [console.clickhouse.cloud](https://console.clickhouse.cloud)
 2. Click your service → **Connect** in the left sidebar
 3. The dialog shows hostname, port, user, and a pre-built CLI command
-4. **Reset password** if needed from the same dialog
+4. If credentials are unavailable, request the missing access. Resetting a password may affect other clients and requires specific authorization.
 
 For self-managed: check `config.xml` or ask your administrator.
 
 ### Output format selection
 
-Always specify a format. The default (TabSeparated without headers) is unparseable by agents.
+Select an explicit format that the consumer can parse. Headerless tab-separated output requires separate column context.
 
-| Format | Tokens (1K rows) | Best For |
-|--------|------------------|----------|
-| `JSON` | ~20K | Single queries — includes column types, row count, statistics |
-| `JSONCompact` | ~10K | Same metadata as JSON but rows as arrays — good for wide tables |
-| `JSONEachRow` | ~15K | Streaming large results, piping through `jq` |
-| `TabSeparatedWithNames` | ~4K | Minimal tokens, simple tabular data |
+| Format | Best For |
+|--------|----------|
+| `JSON` | Column metadata, row count, and statistics |
+| `JSONCompact` | Similar metadata with rows as arrays |
+| `JSONEachRow` | Streaming and line-oriented consumers |
+| `TabSeparatedWithNames` | Compact tabular results with column names |
 
 Use `JSON` as the default for agent work. Switch to `TabSeparatedWithNames` when result sets are large and context window budget matters.
 

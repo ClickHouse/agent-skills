@@ -9,7 +9,7 @@ The section ID (in parentheses) is the filename prefix used to group rules.
 
 **Impact:** CRITICAL
 
-**Description:** Proper schema design is foundational to ClickHouse performance. ORDER BY is immutable after table creation; wrong choices require full data migration. Includes primary key selection, data types, partitioning strategy, and JSON usage. Column types and ordering can impact query speed by orders of magnitude.
+**Description:** Proper schema design is foundational to ClickHouse performance. Changing existing physical ordering generally requires migration; constrained metadata-only sorting-key changes are possible. Includes primary key selection, data types, partitioning strategy, and JSON usage. Column types and ordering can impact query speed by orders of magnitude.
 
 ## 2. Query Optimization (query)
 
@@ -21,10 +21,10 @@ The section ID (in parentheses) is the filename prefix used to group rules.
 
 **Impact:** CRITICAL
 
-**Description:** Each INSERT creates a data part. Single-row inserts overwhelm the merge process. Proper batching (10K-100K rows), async inserts for high-frequency writes, mutation avoidance, and letting background merges work are essential for stable cluster performance.
+**Description:** Synchronous inserts create parts, potentially across multiple partitions. Frequent small synchronous inserts can overwhelm merges. Proper batching (10K-100K rows), async inserts for high-frequency writes, mutation avoidance, and letting background merges work are essential for stable cluster performance.
 
 ## 4. Agent Integration (agent)
 
 **Impact:** CRITICAL
 
-**Description:** AI agents working with ClickHouse need deliberate connection setup, schema discovery, and safe query execution. Agents that skip discovery write queries that ignore the sort key and scan full tables; agents without safety limits run unbounded queries that exhaust compute budgets. Covers MCP/CLI/HTTP connectivity and credential handling, the schema discovery workflow (databases → tables → columns → sort keys → skip indexes → sample → EXPLAIN), and query safety defaults (LIMIT, `max_execution_time`, `EXPLAIN ESTIMATE`).
+**Description:** AI agents working with ClickHouse need deliberate connection setup, schema discovery, and safe query execution. Use supplied metadata or discover what the task is missing; inspect plans and resource budgets for unfamiliar or expensive queries. Covers MCP/CLI/HTTP connectivity and credential handling, task-relevant metadata discovery and plan inspection, and resource controls such as `max_execution_time` and plan estimates; bound previews without changing requested result semantics.

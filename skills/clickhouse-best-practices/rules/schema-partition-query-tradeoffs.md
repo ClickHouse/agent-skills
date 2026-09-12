@@ -9,13 +9,13 @@ tags: [schema, partitioning, query, performance]
 
 **Impact: MEDIUM**
 
-Partitioning can help or hurt query performance:
+Preserve the requested time range: adding a time filter changes the answer. Partitioning can help or hurt query performance:
 - **Potential improvement**: Queries filtering by partition key may benefit from partition pruning
 - **Potential degradation**: Queries spanning many partitions increase total parts scanned
 
 ClickHouse automatically builds **MinMax indexes** on partition columns. Data merges occur **within partitions only**, not across them.
 
-**Incorrect (query scans all partitions):**
+**Example (all-time count, no partition pruning):**
 
 ```sql
 -- Query must scan all partitions
@@ -23,7 +23,7 @@ SELECT count(*) FROM events
 WHERE event_type = 'click';  -- No partition pruning
 ```
 
-**Correct (query prunes to single partition):**
+**Example (when the user requests a January-only count):**
 
 ```sql
 -- Query prunes to single partition

@@ -9,7 +9,7 @@ tags: [insert, batching, parts, performance]
 
 **Impact: CRITICAL**
 
-Each INSERT creates a new data part. Single-row or small-batch inserts create thousands of tiny parts, overwhelming the merge process and causing cluster instability.
+Synchronous inserts into MergeTree create parts, potentially several when a batch spans partitions. Async inserts buffer requests before creating parts. Single-row or small-batch inserts create thousands of tiny parts, overwhelming the merge process and causing cluster instability.
 
 **Incorrect (single-row or tiny batches):**
 
@@ -43,11 +43,11 @@ for batch in chunks(events, BATCH_SIZE):
 **Validation:**
 
 ```sql
--- Monitor part count (>3000 per partition blocks inserts)
-SELECT table, count() as parts, sum(rows) as total_rows
+-- Compare part counts with the deployment settings; thresholds vary
+SELECT table, partition, count() as parts, sum(rows) as total_rows
 FROM system.parts
 WHERE active AND database = 'default'
-GROUP BY table
+GROUP BY table, partition
 ORDER BY parts DESC;
 ```
 

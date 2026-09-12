@@ -1,274 +1,69 @@
 ---
 name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 31 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+description: ClickHouse schema, query-performance, ingestion, and bounded database exploration guidance. Use when designing or reviewing tables, optimizing queries, choosing insert/update strategies, or querying an unfamiliar ClickHouse database.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 31 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
-
-> **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
-
-## IMPORTANT: How to Apply This Skill
-
-**Before answering ClickHouse questions, follow this priority order:**
-
-1. **Check for applicable rules** in the `rules/` directory
-2. **If rules exist:** Apply them and cite them in your response using "Per `rule-name`..."
-3. **If no rule exists:** Use the LLM's ClickHouse knowledge or search documentation
-4. **If uncertain:** Use web search for current best practices
-5. **Always cite your source:** rule name, "general ClickHouse guidance", or URL
-
-**Why rules take priority:** ClickHouse has specific behaviors (columnar storage, sparse indexes, merge tree mechanics) where general database intuition can be misleading. The rules encode validated, ClickHouse-specific guidance.
-
----
-
-## Agent Connectivity & Query Workflow
-
-Before querying ClickHouse, agents must establish a connection and follow the discovery workflow:
-
-1. `rules/agent-connect-mcp.md` - Connection setup (MCP + CLI), credential discovery, output format selection
-2. `rules/agent-discovery-schema.md` - **CRITICAL**: 7-step schema discovery workflow
-3. `rules/agent-query-safety.md` - **CRITICAL**: LIMIT, timeouts, progressive exploration
-
-**Every agent session should follow this sequence:**
-
-1. **Connect** — establish connection via MCP or CLI (see `agent-connect-mcp`)
-2. **Discover** — databases → tables → columns + comments → sort keys → skip indexes → sample → EXPLAIN
-3. **Plan** — use sort key and skip index knowledge to write efficient WHERE clauses
-4. **Execute** — run queries with LIMIT and timeouts
-5. **Recover** — on timeout/memory errors, narrow filters and retry (see `agent-query-safety`)
-
-### Subagent architecture notes
-
-If your system dispatches ClickHouse tasks to specialized subagents:
-- **Schema discovery + query execution**: any model — the steps are procedural
-- **EXPLAIN analysis + query optimization**: benefits from mid-tier reasoning
-- **Schema design review against all 28 rules**: benefits from mid-tier reasoning
-
----
-
-## Review Procedures
-
-### For Schema Reviews (CREATE TABLE, ALTER TABLE)
-
-**Read these rule files in order:**
-
-1. `rules/schema-pk-plan-before-creation.md` - ORDER BY is immutable
-2. `rules/schema-pk-cardinality-order.md` - Column ordering in keys
-3. `rules/schema-pk-prioritize-filters.md` - Filter column inclusion
-4. `rules/schema-types-native-types.md` - Proper type selection
-5. `rules/schema-types-minimize-bitwidth.md` - Numeric type sizing
-6. `rules/schema-types-lowcardinality.md` - LowCardinality usage
-7. `rules/schema-types-avoid-nullable.md` - Nullable vs DEFAULT
-8. `rules/schema-partition-low-cardinality.md` - Partition count limits
-9. `rules/schema-partition-lifecycle.md` - Partitioning purpose
-
-**Check for:**
-- [ ] PRIMARY KEY / ORDER BY column order (low-to-high cardinality)
-- [ ] Data types match actual data ranges
-- [ ] LowCardinality applied to appropriate string columns
-- [ ] Partition key cardinality bounded (100-1,000 values)
-- [ ] ReplacingMergeTree has version column if used
-
-### For Query Reviews (SELECT, JOIN, aggregations)
-
-**Read these rule files:**
-
-1. `rules/query-join-choose-algorithm.md` - Algorithm selection
-2. `rules/query-join-filter-before.md` - Pre-join filtering
-3. `rules/query-join-use-any.md` - ANY vs regular JOIN
-4. `rules/query-index-skipping-indices.md` - Secondary index usage
-5. `rules/schema-pk-filter-on-orderby.md` - Filter alignment with ORDER BY
-
-**Check for:**
-- [ ] Filters use ORDER BY prefix columns
-- [ ] JOINs filter tables before joining (not after)
-- [ ] Correct JOIN algorithm for table sizes
-- [ ] Skipping indices for non-ORDER BY filter columns
-
-### For Insert Strategy Reviews (data ingestion, updates, deletes)
-
-**Read these rule files:**
-
-1. `rules/insert-batch-size.md` - Batch sizing requirements
-2. `rules/insert-mutation-avoid-update.md` - UPDATE alternatives
-3. `rules/insert-mutation-avoid-delete.md` - DELETE alternatives
-4. `rules/insert-async-small-batches.md` - Async insert usage
-5. `rules/insert-optimize-avoid-final.md` - OPTIMIZE TABLE risks
-
-**Check for:**
-- [ ] Batch size 10K-100K rows per INSERT
-- [ ] No ALTER TABLE UPDATE for frequent changes
-- [ ] ReplacingMergeTree or CollapsingMergeTree for update patterns
-- [ ] Async inserts enabled for high-frequency small batches
-
----
-
-## Output Format
-
-Structure your response as follows:
-
-```
-## Rules Checked
-- `rule-name-1` - Compliant / Violation found
-- `rule-name-2` - Compliant / Violation found
-...
-
-## Findings
-
-### Violations
-- **`rule-name`**: Description of the issue
-  - Current: [what the code does]
-  - Required: [what it should do]
-  - Fix: [specific correction]
-
-### Compliant
-- `rule-name`: Brief note on why it's correct
-
-## Recommendations
-[Prioritized list of changes, citing rules]
-```
-
----
-
-## Rule Categories by Priority
-
-| Priority | Category | Impact | Prefix | Rule Count |
-|----------|----------|--------|--------|------------|
-| 1 | Primary Key Selection | CRITICAL | `schema-pk-` | 4 |
-| 2 | Data Type Selection | CRITICAL | `schema-types-` | 5 |
-| 3 | JOIN Optimization | CRITICAL | `query-join-` | 5 |
-| 4 | Insert Batching | CRITICAL | `insert-batch-` | 1 |
-| 5 | Mutation Avoidance | CRITICAL | `insert-mutation-` | 2 |
-| 6 | Partitioning Strategy | HIGH | `schema-partition-` | 4 |
-| 7 | Skipping Indices | HIGH | `query-index-` | 1 |
-| 8 | Materialized Views | HIGH | `query-mv-` | 2 |
-| 9 | Async Inserts | HIGH | `insert-async-` | 2 |
-| 10 | OPTIMIZE Avoidance | HIGH | `insert-optimize-` | 1 |
-| 11 | JSON Usage | MEDIUM | `schema-json-` | 1 |
-| 12 | Agent Schema Discovery | CRITICAL | `agent-discovery-` | 1 |
-| 13 | Agent Query Safety | CRITICAL | `agent-query-` | 1 |
-| 14 | Agent Connectivity + Formats | HIGH | `agent-connect-` | 1 |
-
----
-
-## Quick Reference
-
-### Schema Design - Primary Key (CRITICAL)
-
-- `schema-pk-plan-before-creation` - Plan ORDER BY before table creation (immutable)
-- `schema-pk-cardinality-order` - Order columns low-to-high cardinality
-- `schema-pk-prioritize-filters` - Include frequently filtered columns
-- `schema-pk-filter-on-orderby` - Query filters must use ORDER BY prefix
-
-### Schema Design - Data Types (CRITICAL)
-
-- `schema-types-native-types` - Use native types, not String for everything
-- `schema-types-minimize-bitwidth` - Use smallest numeric type that fits
-- `schema-types-lowcardinality` - LowCardinality for <10K unique strings
-- `schema-types-enum` - Enum for finite value sets with validation
-- `schema-types-avoid-nullable` - Avoid Nullable; use DEFAULT instead
-
-### Schema Design - Partitioning (HIGH)
-
-- `schema-partition-low-cardinality` - Keep partition count 100-1,000
-- `schema-partition-lifecycle` - Use partitioning for data lifecycle, not queries
-- `schema-partition-query-tradeoffs` - Understand partition pruning trade-offs
-- `schema-partition-start-without` - Consider starting without partitioning
-
-### Schema Design - JSON (MEDIUM)
-
-- `schema-json-when-to-use` - JSON for dynamic schemas; typed columns for known
-
-### Query Optimization - JOINs (CRITICAL)
-
-- `query-join-choose-algorithm` - Select algorithm based on table sizes
-- `query-join-use-any` - ANY JOIN when only one match needed
-- `query-join-filter-before` - Filter tables before joining
-- `query-join-consider-alternatives` - Dictionaries/denormalization vs JOIN
-- `query-join-null-handling` - join_use_nulls=0 for default values
-
-### Query Optimization - Indices (HIGH)
-
-- `query-index-skipping-indices` - Skipping indices for non-ORDER BY filters
-
-### Query Optimization - Materialized Views (HIGH)
-
-- `query-mv-incremental` - Incremental MVs for real-time aggregations
-- `query-mv-refreshable` - Refreshable MVs for complex joins
-
-### Insert Strategy - Batching (CRITICAL)
-
-- `insert-batch-size` - Batch 10K-100K rows per INSERT
-
-### Insert Strategy - Async (HIGH)
-
-- `insert-async-small-batches` - Async inserts for high-frequency small batches
-- `insert-format-native` - Native format for best performance
-
-### Insert Strategy - Mutations (CRITICAL)
-
-- `insert-mutation-avoid-update` - ReplacingMergeTree instead of ALTER UPDATE
-- `insert-mutation-avoid-delete` - Lightweight DELETE or DROP PARTITION
-
-### Insert Strategy - Optimization (HIGH)
-
-- `insert-optimize-avoid-final` - Let background merges work
-
-### Agent Integration - Discovery (CRITICAL)
-
-- `agent-discovery-schema` - Always discover schema before querying
-
-### Agent Integration - Safety (CRITICAL)
-
-- `agent-query-safety` - LIMIT, timeouts, progressive exploration
-
-### Agent Integration - Connectivity + Formats (HIGH)
-
-- `agent-connect-mcp` - MCP + CLI setup, credential discovery, output format selection
-
----
-
-## When to Apply
-
-This skill activates when you encounter:
-
-- AI agent connecting to ClickHouse (MCP, CLI, HTTP)
-- Agent workflow design for ClickHouse
-- Schema discovery or exploration requests
-
-- `CREATE TABLE` statements
-- `ALTER TABLE` modifications
-- `ORDER BY` or `PRIMARY KEY` discussions
-- Data type selection questions
-- Slow query troubleshooting
-- JOIN optimization requests
-- Data ingestion pipeline design
-- Update/delete strategy questions
-- ReplacingMergeTree or other specialized engine usage
-- Partitioning strategy decisions
-
----
-
-## Rule File Structure
-
-Each rule file in `rules/` contains:
-
-- **YAML frontmatter**: title, impact level, tags
-- **Brief explanation**: Why this rule matters
-- **Incorrect example**: Anti-pattern with explanation
-- **Correct example**: Best practice with explanation
-- **Additional context**: Trade-offs, when to apply, references
-
----
-
-## Full Compiled Document
-
-For the complete guide with all rules expanded inline: `AGENTS.md`
-
-Use `AGENTS.md` when you need to check multiple rules quickly without reading individual files.
+Use the references relevant to the task. They capture ClickHouse-specific mechanics and trade-offs; their impact labels are priorities for investigation, not guaranteed speedups or universal requirements.
+
+## How to use
+
+- Preserve the user's requested scope and result semantics. A review requests findings; it does not authorize changing a live database.
+- Read only the relevant rules below. Reuse supplied schema and session evidence; connect or discover missing metadata only when the task needs live access.
+- Choose optimizations from the workload, data distribution, engine, and deployed version. Verify version-dependent features and defaults against current [official documentation](https://clickhouse.com/docs) or the target instance; a rule is not evidence that a feature is available there.
+- Support recommendations with a relevant rule link, official source, or measured query plan/result. Distinguish measured improvements from hypotheses and state material uncertainty.
+- Match the response to the request. For a comprehensive review, use the optional [review checklist](references/review.md); ordinary questions do not need a compliance report.
+
+## References by task
+
+### Schema design
+
+- [Use JSON Type for Dynamic Schemas](rules/schema-json-when-to-use.md)
+- [Use Partitioning for Data Lifecycle Management](rules/schema-partition-lifecycle.md)
+- [Keep Partition Cardinality Bounded](rules/schema-partition-low-cardinality.md)
+- [Understand Partition Query Performance Trade-offs](rules/schema-partition-query-tradeoffs.md)
+- [Consider Starting Without Partitioning](rules/schema-partition-start-without.md)
+- [Order Columns by Cardinality (Low to High)](rules/schema-pk-cardinality-order.md)
+- [Filter on ORDER BY Columns in Queries](rules/schema-pk-filter-on-orderby.md)
+- [Plan PRIMARY KEY Before Table Creation](rules/schema-pk-plan-before-creation.md)
+- [Prioritize Filter Columns in ORDER BY](rules/schema-pk-prioritize-filters.md)
+- [Avoid Nullable Unless Semantically Required](rules/schema-types-avoid-nullable.md)
+- [Use Enum for Finite Value Sets](rules/schema-types-enum.md)
+- [Use LowCardinality for Repeated Strings](rules/schema-types-lowcardinality.md)
+- [Minimize Bit-Width for Numeric Types](rules/schema-types-minimize-bitwidth.md)
+- [Use Native Types Instead of String](rules/schema-types-native-types.md)
+
+### Query optimization
+
+- [Use Data Skipping Indices for Non-ORDER BY Filters](rules/query-index-skipping-indices.md)
+- [Choose the Right JOIN Algorithm](rules/query-join-choose-algorithm.md)
+- [Consider Alternatives to JOINs](rules/query-join-consider-alternatives.md)
+- [Filter Tables Before Joining](rules/query-join-filter-before.md)
+- [Optimize NULL Handling in Outer JOINs](rules/query-join-null-handling.md)
+- [Use ANY JOIN When Only One Match Needed](rules/query-join-use-any.md)
+- [Use Incremental MVs for Real-Time Aggregations](rules/query-mv-incremental.md)
+- [Use Refreshable MVs for Complex Joins and Batch Workflows](rules/query-mv-refreshable.md)
+
+### Ingestion and updates
+
+- [Use Async Inserts for High-Frequency Small Batches](rules/insert-async-small-batches.md)
+- [Batch Inserts Appropriately (10K-100K rows)](rules/insert-batch-size.md)
+- [Use Native Format for Best Insert Performance](rules/insert-format-native.md)
+- [Avoid ALTER TABLE DELETE](rules/insert-mutation-avoid-delete.md)
+- [Avoid ALTER TABLE UPDATE](rules/insert-mutation-avoid-update.md)
+- [Avoid OPTIMIZE TABLE FINAL](rules/insert-optimize-avoid-final.md)
+
+### Live database access
+
+- [Connect AI Agents to ClickHouse](rules/agent-connect-mcp.md)
+- [Discover Relevant Schema Before Querying](rules/agent-discovery-schema.md)
+- [Bound Live Query Resource Use](rules/agent-query-safety.md)
+
+## Full reference
+
+[AGENTS.md](AGENTS.md) is the generated compilation for a full read or offline reference. Individual rules are the source of truth; loading the compilation is optional.
