@@ -9,7 +9,7 @@
 - Errors on every request → likely dangling stream (Step 1–2)
 - Errors only after idle periods → Keep-Alive timeout mismatch (Step 3)
 - Errors on long-running queries (INSERT FROM SELECT, etc.) → load balancer idle timeout (Step 4)
-- Can't diagnose → disable Keep-Alive as a last resort (Step 5)
+- Unresolved after checking streams/timeouts → consider a temporary Keep-Alive comparison (Step 5)
 
 ## Step 1 — Enable WARN-level logging to find dangling streams
 
@@ -195,7 +195,7 @@ As a rule of thumb, set the interval slightly **below** your load balancer's idl
 
 > **Requires:** `>= 0.1.1` (Keep-Alive disable option introduced in 0.1.1).
 
-Adds overhead (new TCP connection per request) but eliminates all Keep-Alive issues:
+A temporary comparison without socket reuse can help isolate Keep-Alive-related failures. It adds connection overhead and does not resolve other causes of connection resets:
 
 ```js
 const client = createClient({
