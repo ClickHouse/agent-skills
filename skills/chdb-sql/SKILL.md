@@ -1,116 +1,35 @@
 ---
 name: chdb-sql
-description: >-
-  Use when the user wants to run SQL — especially analytical SQL — on
-  local files (parquet/csv/json), URLs, S3 paths, or remote databases
-  (Postgres, MySQL, MongoDB, ClickHouse Cloud, Iceberg, Delta Lake)
-  without setting up a server. Provides chDB — embedded ClickHouse SQL
-  in Python with 1000+ functions, Session for stateful multi-step
-  pipelines, parametrized queries, and cross-source joins via `s3()`,
-  `mysql()`, `postgresql()`, `iceberg()`, `deltaLake()`, `remoteSecure()`
-  table functions.
-  TRIGGER when: user wants SQL on parquet/csv/files or across remote
-  analytical sources; uses ClickHouse SQL features (window functions,
-  windowFunnel, geoToH3, JSON path ops, Session, parametrized queries);
-  imports `chdb` or calls `chdb.query()`.
-  SKIP this skill for pandas-style DataFrame method-chaining (use
-  chdb-datastore instead) or ClickHouse server administration.
+description: Run embedded ClickHouse SQL in Python with chDB. Use for chdb.query(), sessions, DB-API connections, or a requested chDB analysis of files and remote sources.
 license: Apache-2.0
 compatibility: Requires Python 3.9+, macOS or Linux. pip install chdb.
 metadata:
   author: chdb-io
-  version: "4.1"
+  version: "4.1.1"
   homepage: https://clickhouse.com/docs/chdb
 ---
 
-# chdb SQL — ClickHouse in Your Python Process
+# chDB SQL
 
-Run ClickHouse SQL directly in Python — no server needed. Query local files, remote databases, and cloud storage with full ClickHouse SQL power.
+Use chDB for in-process ClickHouse SQL when the task or project calls for it. A generic SQL, CSV, or Parquet question does not itself require migrating to chDB or installing it.
 
-```bash
-pip install chdb
-```
+## Choose the API
 
-## Decision Tree: Pick the Right API
+- `chdb.query()` for an independent query.
+- `Session` for queries sharing tables or persistent state; use an intentional storage path and close the session when finished.
+- DB-API connections for integrations expecting a cursor/connection interface.
+- DataStore for an existing pandas-style workflow; it is a separate API, not a required step before SQL.
 
-```
-1. One-off query on files or databases → chdb.query()
-2. Multi-step analysis with tables      → Session
-3. DB-API 2.0 connection                → chdb.connect()
-4. Pandas-style DataFrame operations    → Use chdb-datastore skill instead
-```
+Check the project's installed chDB version and dependency conventions. Use typed query parameters for values rather than interpolating user input. Bound exploratory output and consider remote scan volume; embedded execution does not make remote queries free. Reuse authorized data sources and credentials, and preserve requested output semantics.
 
-## chdb.query() — One Line, Any Data
+## References by task
 
-```python
-import chdb
+- [API reference](references/api-reference.md): signatures, parameters, sessions, connections, streaming, and output formats.
+- [Quick-start patterns](references/quick-start.md): examples of choosing and using each API.
+- [Table functions](references/table-functions.md): source-specific readers and connection arguments.
+- [SQL functions](references/sql-functions.md): common analytical functions.
+- [Examples](examples/examples.md): fuller query and pipeline examples.
+- [Environment check](scripts/verify_install.py): optional local smoke check for installation/API problems; run from this skill directory.
+- [Official documentation](https://clickhouse.com/docs/chdb): verify version-sensitive behavior.
 
-chdb.query("SELECT * FROM file('data.parquet', Parquet) WHERE price > 100 LIMIT 10")       # local files
-chdb.query("SELECT * FROM mysql('db:3306', 'shop', 'orders', 'root', 'pass')")              # databases
-chdb.query("SELECT * FROM s3('s3://bucket/data.parquet', NOSIGN) LIMIT 10")                 # cloud storage
-chdb.query("SELECT * FROM deltaLake('s3://bucket/delta/table', NOSIGN) LIMIT 10")           # data lakes
-
-# Cross-source join
-chdb.query("""
-    SELECT u.name, o.amount FROM mysql('db:3306', 'crm', 'users', 'root', 'pass') AS u
-    JOIN file('orders.parquet', Parquet) AS o ON u.id = o.user_id ORDER BY o.amount DESC
-""")
-
-data = {"name": ["Alice", "Bob"], "score": [95, 87]}
-chdb.query("SELECT * FROM Python(data) ORDER BY score DESC")                                # Python data
-df = chdb.query("SELECT * FROM numbers(10)", "DataFrame")                                   # output formats
-chdb.query("SELECT toDate({d:String}) + number FROM numbers({n:UInt64})",
-    "DataFrame", params={"d": "2025-01-01", "n": 30})                                      # parametrized
-```
-
-Table functions → [table-functions.md](references/table-functions.md) | SQL functions → [sql-functions.md](references/sql-functions.md) | Full API → [api-reference.md](references/api-reference.md)
-
-## Session — Stateful Analysis Pipelines
-
-```python
-from chdb import session as chs
-sess = chs.Session("./analytics_db")   # persistent; Session() for in-memory
-
-sess.query("CREATE TABLE users ENGINE=MergeTree() ORDER BY id AS SELECT * FROM mysql('db:3306','crm','users','root','pass')")
-sess.query("CREATE TABLE events ENGINE=MergeTree() ORDER BY (ts,user_id) AS SELECT * FROM s3('s3://logs/events/*.parquet',NOSIGN)")
-sess.query("""
-    SELECT u.country, count() AS cnt, uniqExact(e.user_id) AS users
-    FROM events e JOIN users u ON e.user_id = u.id
-    WHERE e.ts >= today() - 7 GROUP BY u.country ORDER BY cnt DESC
-""", "Pretty").show()
-sess.close()
-```
-
-## Connection API (DB-API 2.0)
-
-```python
-from chdb import dbapi
-conn = dbapi.connect()
-cur = conn.cursor()
-cur.execute("SELECT * FROM file('data.parquet', Parquet) WHERE value > 100")
-print(cur.fetchall())
-cur.close()
-conn.close()
-```
-
-## Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
-| `ImportError: No module named 'chdb'` | `pip install chdb` |
-| `DB::Exception: FILE_NOT_FOUND` | Check file path; use absolute path or verify cwd |
-| `DB::Exception: Unknown table function` | Check function name spelling (e.g., `deltaLake` not `deltalake`) |
-| Connection refused to remote DB | Check host:port format; ensure remote DB allows connections |
-| Environment check | Run `python scripts/verify_install.py` (from skill directory) |
-
-## References
-
-- [API Reference](references/api-reference.md) — query/Session/connect signatures
-- [Table Functions](references/table-functions.md) — All ClickHouse table functions
-- [SQL Functions](references/sql-functions.md) — Commonly used SQL functions
-- [Examples](examples/examples.md) — 9 runnable examples with expected output
-- [Official Docs](https://clickhouse.com/docs/chdb)
-
-> Note: This skill teaches how to *use* chdb SQL.
-> For pandas-style operations, use the `chdb-datastore` skill.
-> For contributing to chdb source code, see CLAUDE.md in the project root.
+Read the references that answer the task. Configuration or credentials needed only by a different API are not prerequisites.

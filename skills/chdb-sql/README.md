@@ -13,8 +13,9 @@ npx skills add clickhouse/agent-skills
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Skill definition with quick-start examples |
+| `references/quick-start.md` | Examples by API |
 | `references/api-reference.md` | chdb.query(), Session, Connection signatures |
-| `references/table-functions.md` | All ClickHouse table functions (file, s3, mysql, etc.) |
+| `references/table-functions.md` | Common source table functions (file, s3, mysql, etc.) |
 | `references/sql-functions.md` | Commonly used ClickHouse SQL functions |
 | `examples/examples.md` | 9 runnable examples with expected output |
 | `scripts/verify_install.py` | Environment verification script |
@@ -22,12 +23,12 @@ npx skills add clickhouse/agent-skills
 ## Trigger Phrases
 
 This skill activates when you:
-- "Query this Parquet/CSV file with SQL"
+- "Query this Parquet/CSV file with chDB SQL"
 - "Use chdb to run a query"
-- "Join MySQL and S3 data with SQL"
-- "Create a ClickHouse session"
-- "Use ClickHouse table functions"
-- "Write a parametrized query"
+- "Join MySQL and S3 data with chDB SQL"
+- "Create a chDB session"
+- "Use a table function in chDB"
+- "Write a parametrized chDB query"
 
 ## Related
 

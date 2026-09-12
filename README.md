@@ -93,11 +93,11 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* �
 
 ### chdb SQL
 
-**In-process ClickHouse SQL** for Python — run SQL queries on local files, remote databases, and cloud storage without a server. Covers `chdb.query()`, Session, DB-API 2.0, parametrized queries, UDFs, streaming, and all ClickHouse table functions.
+**In-process ClickHouse SQL** for Python — run SQL queries on local files, remote databases, and cloud storage without a server. Covers `chdb.query()`, Session, DB-API 2.0, parametrized queries, UDFs, streaming, and common source table functions.
 
 **Location:** [`skills/chdb-sql/`](./skills/chdb-sql/)
 
-**For agents:** The skill activates when you write SQL queries against files, use ClickHouse table functions, build stateful analytical pipelines, or use advanced ClickHouse SQL features.
+**For agents:** Use for an existing chDB project or a requested chDB SQL analysis, including sessions and DB-API integrations.
 
 ### Infra ClickHouse
 

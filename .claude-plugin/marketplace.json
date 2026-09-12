@@ -92,8 +92,8 @@
     {
       "name": "chdb-sql",
       "source": "./skills/chdb-sql/",
-      "description": "Embedded ClickHouse SQL engine for Python via chDB — run analytical SQL on parquet/csv/json files, URLs, S3, and remote databases (Postgres, MySQL, MongoDB, ClickHouse Cloud, Iceberg, Delta Lake) with Session for stateful pipelines, parametrized queries, UDFs, and cross-source joins",
-      "version": "4.1.0",
+      "description": "Run embedded ClickHouse SQL in Python with chDB. Use for chdb.query(), sessions, DB-API connections, or a requested chDB analysis of files and remote sources.",
+      "version": "4.1.1",
       "author": {
         "name": "ClickHouse Inc"
       },
