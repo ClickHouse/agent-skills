@@ -3,7 +3,7 @@
 > **Requires:** client `>= 1.14.0` (configurable `json.parse` and
 > `json.stringify`). Earlier versions cannot swap the JSON implementation.
 
-## Answer checklist
+## Decision points
 
 When the user wants `UInt64`/`Int64` values back as `BigInt`:
 

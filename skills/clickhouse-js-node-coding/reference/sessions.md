@@ -3,7 +3,7 @@
 > **Applies to:** all versions. `session_id` is a server-level concept; the
 > client just forwards it on every request that names it.
 
-## Answer checklist
+## Decision points
 
 When answering "temp table disappears between calls" / "how do I share a
 session" / anything involving `session_id`:

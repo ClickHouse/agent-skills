@@ -7,7 +7,7 @@
 > **Raw / binary formats (CSV, TSV, CustomSeparated, Parquet) require a Node
 > stream as input.** Suggest streaming when the user wants to insert from a file or `Readable`.
 
-## Answer checklist
+## Decision points
 
 When answering "what format/call should I use for an array of JS objects?":
 
@@ -24,7 +24,7 @@ When answering "what format/call should I use for an array of JS objects?":
 
 ## Default choice: `JSONEachRow` with an array of objects
 
-This is the right answer for ~90% of inserts.
+This is a useful default for ordinary in-memory row batches.
 
 ```ts
 import { createClient } from "@clickhouse/client";

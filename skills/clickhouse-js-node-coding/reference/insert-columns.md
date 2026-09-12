@@ -3,7 +3,7 @@
 > **Applies to:** all versions. The `columns` option (both forms) and the
 > `database` config field are universally supported.
 
-## Answer checklist
+## Decision points
 
 When explaining partial-column inserts:
 

@@ -6,7 +6,7 @@
 
 ## Default choice: `JSONEachRow` → `.json<T>()`
 
-Right answer for ~90% of selects when the result fits in memory.
+A useful default for row-oriented results that fit in memory.
 
 ```ts
 import { createClient } from "@clickhouse/client";
