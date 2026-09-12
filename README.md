@@ -85,11 +85,11 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* �
 
 ### chdb DataStore
 
-**Pandas-compatible API** for chdb — drop-in pandas replacement backed by ClickHouse. Write `import chdb.datastore as pd` and use the same pandas API, 10-100x faster. Supports 16+ data sources (MySQL, PostgreSQL, S3, MongoDB, Iceberg, Delta Lake, etc.) with cross-source joins.
+**Pandas-compatible API** for chdb — lazy DataFrame operations backed by ClickHouse, with readers for local and remote sources. Evaluate result compatibility and performance on representative workloads before migrating pandas code.
 
 **Location:** [`skills/chdb-datastore/`](./skills/chdb-datastore/)
 
-**For agents:** The skill activates when you analyze data with pandas-style syntax, speed up slow pandas code, query remote databases as DataFrames, or join data across different sources.
+**For agents:** Use when the project already uses chDB DataStore or the user wants to evaluate it for pandas-style analysis and cross-source queries.
 
 ### chdb SQL
 
