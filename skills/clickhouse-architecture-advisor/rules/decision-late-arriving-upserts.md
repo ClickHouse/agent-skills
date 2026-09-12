@@ -52,6 +52,10 @@ Heavy mutation usage often becomes the bottleneck in otherwise append-friendly s
 - `insert-mutation-avoid-update`
 - `insert-mutation-avoid-delete`
 
+## Correctness constraints
+
+Define stable row identity and deterministic version ordering, including late events. Replacement during background merges is eventual; queries need appropriate FINAL or aggregation semantics before merges. An incremental aggregate over inserted versions does not automatically retract prior versions.
+
 ## Validation
 
 - Measure mutation volume per day

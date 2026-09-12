@@ -67,7 +67,7 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 | Time-Series Partitioning | HIGH |
 | Real-Time Pre-Aggregation | HIGH |
 
-Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* — not just *what*. All recommendations are explicitly classified as `official`, `derived`, or `field` guidance.
+Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* — not just *what*. Recommendations distinguish official documentation, workload-specific inference, and field heuristics; structured reviews can use explicit provenance labels.
 
 **Location:** [`skills/clickhouse-architecture-advisor/`](./skills/clickhouse-architecture-advisor/)
 

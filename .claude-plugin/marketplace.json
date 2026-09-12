@@ -31,8 +31,8 @@
     {
       "name": "clickhouse-architecture-advisor",
       "source": "./skills/clickhouse-architecture-advisor/",
-      "description": "Workload-aware architecture decision skill for ClickHouse — ingestion strategies, partitioning, enrichment, upsert patterns, and pre-aggregation with explicit official/derived/field provenance",
-      "version": "0.1.0",
+      "description": "Compare ClickHouse architecture options for a specific workload, including ingestion, enrichment, mutable state, partitioning, and pre-aggregation. Use for system-design decisions and architecture reviews.",
+      "version": "0.2.0",
       "author": {
         "name": "ClickHouse Inc"
       },
