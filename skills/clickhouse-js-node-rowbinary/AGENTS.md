@@ -23,6 +23,8 @@ The tests follow a few conventions worth preserving:
 
 ## No defensive validation in readers/writers
 
+These conventions apply to this package’s low-level codec implementation, not to validation at an application’s untrusted-input boundary.
+
 These are hot-path codecs. **Do not add runtime validation of input values** (`isFinite`,
 range/`NaN` checks, type guards, etc.) to the `readX`/`writeX` functions. The data at this level is
 expected to be correct, and an invalid value is a programming error — document the precondition in the
