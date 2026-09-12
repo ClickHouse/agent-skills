@@ -154,8 +154,8 @@
     {
       "name": "clickstack-otel-collector",
       "source": "./skills/clickstack-otel-collector/",
-      "description": "Step-by-step workflow for wiring an OpenTelemetry collector into a Managed ClickStack service on ClickHouse Cloud — deploying a new local collector or configuring an existing one, creating a dedicated ingest user, sending synthetic telemetry, and verifying it in ClickStack",
-      "version": "0.6.0",
+      "description": "Connect a new or existing OpenTelemetry collector to Managed ClickStack on ClickHouse Cloud, or diagnose and verify that ingestion path.",
+      "version": "0.7.0",
       "author": {
         "name": "ClickHouse Inc"
       },
