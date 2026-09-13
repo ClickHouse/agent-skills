@@ -5,7 +5,6 @@
 
 ## Table of Contents
 
-- [File Sources](#file-sources)
 - [Cloud Storage](#cloud-storage)
 - [Databases](#databases)
 - [Data Lakes](#data-lakes)
@@ -13,25 +12,7 @@
 
 ---
 
-## File Sources
-
-### file()
-
-Query local files. Format is auto-detected from extension or specified explicitly.
-
-```sql
-SELECT * FROM file('data.parquet', Parquet)
-SELECT * FROM file('data.csv', CSVWithNames)
-SELECT * FROM file('events.jsonl', JSONEachRow)
-SELECT * FROM file('logs/*.parquet', Parquet)              -- glob pattern
-SELECT * FROM file('data/2024-*/events.csv', CSVWithNames) -- nested glob
-```
-
-**Parameters:** `file(path [, format [, structure [, compression]]])`
-
-Supported formats: `Parquet`, `CSVWithNames`, `CSV`, `TSVWithNames`, `JSONEachRow`, `JSON`, `Arrow`, `ORC`, `Avro`, `XMLWithNames`.
-
-Supported compression: auto-detected from extension (`.gz`, `.zst`, `.bz2`, `.xz`, `.lz4`).
+Local `file()` syntax, formats, compression, and path guidance are in [local-query.md](local-query.md).
 
 ---
 

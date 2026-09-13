@@ -2,6 +2,8 @@
 
 Choose the API needed by the task. Adapt schemas, paths, and credentials; remote-source examples are not permission to access or copy data. Check the installed version for API availability.
 
+For a focused independent local-file query reference, see [local-query.md](local-query.md).
+
 ## chdb.query() — One Line, Any Data
 
 ```python

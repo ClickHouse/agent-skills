@@ -14,7 +14,8 @@ npx skills add clickhouse/agent-skills
 |------|---------|
 | `SKILL.md` | Skill definition with quick-start examples |
 | `references/quick-start.md` | Examples by API |
-| `references/api-reference.md` | chdb.query(), Session, Connection signatures |
+| `references/local-query.md` | Independent local-file queries, parameters, outputs and result access |
+| `references/api-reference.md` | Session, Connection and advanced APIs; links to independent queries |
 | `references/table-functions.md` | Common source table functions (file, s3, mysql, etc.) |
 | `references/sql-functions.md` | Commonly used ClickHouse SQL functions |
 | `examples/examples.md` | 9 runnable examples with expected output |

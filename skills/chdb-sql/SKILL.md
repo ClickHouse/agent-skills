@@ -24,9 +24,10 @@ Check the project's installed chDB version and dependency conventions. Use typed
 
 ## References by task
 
-- [API reference](references/api-reference.md): signatures, parameters, sessions, connections, streaming, and output formats.
-- [Quick-start patterns](references/quick-start.md): examples of choosing and using each API.
-- [Table functions](references/table-functions.md): source-specific readers and connection arguments.
+- [Independent local-file queries](references/local-query.md): `chdb.query()` signature, result access, typed parameters, output formats, and the local `file` reader.
+- [API reference](references/api-reference.md): sessions, DB-API connections, streaming, callbacks, UDFs, and other advanced APIs.
+- [Quick-start patterns](references/quick-start.md): stateful Session and DB-API examples.
+- [Table functions](references/table-functions.md): remote sources, databases, data lakes, Python data, and utility readers.
 - [SQL functions](references/sql-functions.md): common analytical functions.
 - [Examples](examples/examples.md): fuller query and pipeline examples.
 - [Environment check](scripts/verify_install.py): optional local smoke check for installation/API problems; run from this skill directory.
