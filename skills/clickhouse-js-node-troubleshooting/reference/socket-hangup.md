@@ -2,7 +2,9 @@
 
 **Symptom:** `socket hang up` or `ECONNRESET` errors, often intermittent.
 
-**Root cause:** The server or load balancer closes the Keep-Alive connection before the client detects it and stops reusing the socket.
+**Possible causes:** stale Keep-Alive sockets, unconsumed response streams, network interruption, or a server/proxy closing a connection. A reset alone does not identify which occurred.
+
+For failed INSERTs or duplicate writes, first use [write outcomes and safe recovery](write-outcomes.md). Changing a timeout or socket setting does not establish whether a prior write committed.
 
 **Quick triage:**
 
@@ -189,7 +191,7 @@ Experimenting with the exact load balancer stack might be required.
 
 As a rule of thumb, set the interval slightly **below** your load balancer's idle timeout—typically by a few seconds (for example, often around 5–20 seconds), depending on your load balancer, proxies, and network behavior—while staying under the header limit for your expected query duration.
 
-**Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. This bypasses both the load balancer idle timeout and the Node.js header limit. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
+**Background work:** An HTTP connection loss does not automatically stop a running query, but deliberately closing it does not prove that the server accepted or completed the operation. Use an explicitly supported background-operation API only when that workflow is intended, retain its operation identity, and monitor the appropriate completion state. Missing log records are not a success or nonexecution signal; see [write outcomes](write-outcomes.md).
 
 ## Step 5 — Disable Keep-Alive entirely (last resort)
 

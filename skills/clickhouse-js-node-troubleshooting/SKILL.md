@@ -13,6 +13,7 @@ Read the relevant reference rather than every troubleshooting topic. Apply the s
 
 ## Issue references
 
+- [Unknown INSERT outcomes and safe recovery](reference/write-outcomes.md) — for failed writes, duplicate batches, or retry decisions; establish the outcome boundary before transport tuning.
 - [Socket Hang-Up / ECONNRESET](reference/socket-hangup.md)
 - [Data Type Mismatches](reference/data-types.md)
 - [Read-Only User Errors](reference/readonly-users.md)
