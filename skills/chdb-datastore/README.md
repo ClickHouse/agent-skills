@@ -13,6 +13,7 @@ npx skills add clickhouse/agent-skills
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Skill definition and quick-start guide |
+| `references/pandas-boundary.md` | Pandas migration boundaries, materialization and output preservation |
 | `references/quick-start.md` | Task-specific usage patterns |
 | `references/api-reference.md` | Full DataStore method signatures |
 | `references/connectors.md` | All 16+ data source connection methods |

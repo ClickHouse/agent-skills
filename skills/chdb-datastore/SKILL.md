@@ -16,12 +16,13 @@ DataStore provides a lazy, ClickHouse-backed pandas-compatible API. Use it withi
 ## Working with DataStore
 
 - Inspect the installed version and existing imports before changing dependencies. If installation is needed, use the project's Python environment and dependency conventions.
-- For migration, compare representative results before replacing pandas calls. Check index alignment, ordering, nulls, dtypes, joins, and operations that fall back to pandas. Compatibility and speed depend on the workload.
+- For pandas migrations, preserve the existing alignment and output contract while DataStore performs the requested transformations. Use the [pandas boundary guide](references/pandas-boundary.md) for label alignment, exact metadata, materialization and ordering; compare representative results before replacing calls. Compatibility and speed depend on the workload.
 - Lazy execution means displaying or iterating a result can execute work. Use `.to_sql()` to inspect supported plans and bounded previews when exploring large or remote sources.
 - Use only the data sources needed for the task and existing authorized credentials. Example writes and cross-source joins do not authorize exports or changes to remote databases.
 
 ## References by task
 
+- [Pandas boundary guide](references/pandas-boundary.md): migration semantics and returning exact pandas results from a mixed pipeline.
 - [Quick-start patterns](references/quick-start.md): file/database readers, DataFrame operations, joins, and writing results.
 - [API reference](references/api-reference.md): method signatures, execution, and backend configuration.
 - [Connectors](references/connectors.md): source-specific parameters and URI forms.

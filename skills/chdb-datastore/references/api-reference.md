@@ -24,7 +24,7 @@
 ```python
 from datastore import DataStore
 # or: from chdb.datastore import DataStore
-# or: import chdb.datastore as pd  (drop-in replacement)
+# or: import chdb.datastore as pd  (pandas-style API; verify workload compatibility)
 ```
 
 ### Constructor
@@ -228,6 +228,8 @@ These properties/methods **trigger execution** of the lazy query:
 
 | Property/Method | Returns | Description |
 |-----------------|---------|-------------|
+| `.to_df()` | pandas.DataFrame | Materialize the result as a pandas DataFrame |
+| `.to_pandas()` | pandas.DataFrame | Alias for `.to_df()` |
 | `.columns` | list | Column names |
 | `.shape` | (rows, cols) | Dimensions |
 | `.dtypes` | dict | Column types |
@@ -246,6 +248,10 @@ These methods **do not trigger execution**:
 |--------|---------|-------------|
 | `.to_sql()` | str | View the generated SQL |
 | `.explain()` | str | Execution plan |
+
+For mixed pandas/DataStore pipelines, see the [pandas boundary guide](pandas-boundary.md).
+Use `.explain()` when backend placement matters; `.to_sql()` alone does not prove
+that every operation in a mixed pipeline executes in ClickHouse.
 
 ```python
 print(ds.columns)          # → ['name', 'age', 'city']
