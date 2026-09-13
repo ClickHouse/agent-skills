@@ -12,7 +12,7 @@ Use the installed `@clickhouse/client` API and the project's Node.js conventions
 ## Core decisions
 
 - Reuse an existing client where appropriate. Close short-lived clients after use and shared clients during graceful shutdown; a small edit does not need a new connection example.
-- Bind user-controlled values with ClickHouse `{name: Type}` placeholders and `query_params`. Preserve type/precision semantics. Explain SQL injection when relevant to unsafe code, without requiring a stock warning in every answer.
+- Bind user-controlled values with ClickHouse `{name: Type}` placeholders and `query_params`. Preserve type/precision semantics, including SQL intermediate and aggregate widths as well as JSON/JavaScript representation; see [exact numeric reports](reference/select-formats.md#exact-numeric-reports). Explain SQL injection when relevant to unsafe code, without requiring a stock warning in every answer.
 - Choose `insert` for rows, `query` for results, `command` for statements without results, and `exec` when raw response streaming is needed. Consume or close result streams.
 - JSONEachRow is a useful default for ordinary row data; respect a chosen format and use streaming for results that should not be buffered in memory.
 - Client-level `clickhouse_settings` are request defaults; call-level settings can override them. Explain this when it affects the task.
