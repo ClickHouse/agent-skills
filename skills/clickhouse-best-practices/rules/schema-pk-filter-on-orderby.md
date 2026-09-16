@@ -1,7 +1,7 @@
 ---
 title: Filter on ORDER BY Columns in Queries
 impact: CRITICAL
-impactDescription: "Skipping prefix columns prevents index usage"
+impactDescription: "Leading-key filters often prune best; verify later-key filters with EXPLAIN"
 tags: [schema, primary-key, WHERE, query]
 ---
 
@@ -9,21 +9,21 @@ tags: [schema, primary-key, WHERE, query]
 
 **Impact: CRITICAL**
 
-Even with good schema design, queries must use ORDER BY columns to benefit. Skipping prefix columns or filtering on non-ORDER BY columns prevents index usage.
+Leading primary-key filters often provide the strongest granule pruning. Later-key filters can still use the sparse index, with effectiveness depending on earlier-key cardinality and data distribution. Filters outside the primary key may benefit from partition pruning, skipping indexes, or projections. Use EXPLAIN to check the actual plan; do not add predicates that change the requested result just to match a key.
 
-**Incorrect (skips prefix or uses non-ORDER BY columns):**
+**Example (filters needing plan inspection):**
 
 ```sql
 -- Given: ORDER BY (tenant_id, event_type, timestamp)
 
--- Skips prefix columns - can't use index effectively
+-- Later-key filter: inspect whether it prunes enough granules
 SELECT * FROM events WHERE event_type = 'click';
 
--- Filter on column not in ORDER BY - full table scan
+-- Non-key filter: inspect other indexes and scan volume
 SELECT * FROM events WHERE user_agent LIKE '%Chrome%';
 ```
 
-**Correct (uses ORDER BY prefix):**
+**Example (when tenant-scoped results are requested):**
 
 ```sql
 -- Given: ORDER BY (tenant_id, event_type, timestamp)
@@ -46,7 +46,7 @@ WHERE tenant_id = 123 AND event_type = 'click' AND timestamp >= '2024-01-01';
 |--------|-------------|
 | `WHERE tenant_id = 123` | Full |
 | `WHERE tenant_id = 123 AND event_type = 'click'` | Full |
-| `WHERE event_type = 'click'` | None (skipped prefix) |
-| `WHERE timestamp > '2024-01-01'` | None (skipped both) |
+| `WHERE event_type = 'click'` | Possible; distribution-dependent |
+| `WHERE timestamp > '2024-01-01'` | Possible; distribution-dependent |
 
 Reference: [Choosing a Primary Key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)

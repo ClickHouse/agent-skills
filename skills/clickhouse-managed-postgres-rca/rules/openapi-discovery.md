@@ -15,79 +15,11 @@ Both endpoints this skill uses are **Beta**. Field names and
 paths may shift. Before constructing any requests, resolve the
 current shape from the live OpenAPI spec.
 
-## How (with 24h cache)
+## Discovery and reuse
 
-The spec changes rarely. Cache the resolved paths + role map to
-`/tmp/ch-cloud-rca-cache.json` after a successful discovery,
-and reuse it for up to 24 hours before re-fetching.
+Fetch the OpenAPI document at `https://api.clickhouse.cloud/v1` when no verified mapping is available. Locate the operations below and resolve their parameter/response schemas. Reuse a mapping established in this session or a recent cache that records the spec URL and fetch timestamp; do not rediscover it for every request.
 
-Boilerplate (run at session start):
-
-```bash
-CACHE=/tmp/ch-cloud-rca-cache.json
-TTL=86400  # 24 hours
-
-if [ -f "$CACHE" ]; then
-  if command -v stat >/dev/null 2>&1; then
-    # macOS BSD stat; GNU stat fallback for Linux
-    mtime=$(stat -f %m "$CACHE" 2>/dev/null || stat -c %Y "$CACHE")
-  fi
-  age=$(( $(date +%s) - mtime ))
-else
-  age=$((TTL + 1))
-fi
-
-if [ "$age" -lt "$TTL" ]; then
-  echo "openapi-discovery: using cache ($((age/3600))h old)"
-else
-  echo "openapi-discovery: re-fetching spec"
-  curl -s https://api.clickhouse.cloud/v1 > /tmp/ch-cloud-openapi.json
-  # ...then parse + write $CACHE; see "Cache format" below.
-fi
-```
-
-The cache lets the skill skip the ~863 KB fetch + parse on
-every session. Twenty-four hours is generous; the underlying
-schema shifts on a weeks-to-months cadence, not daily.
-
-## Cache format
-
-After a fresh fetch, write the resolved knowledge to
-`/tmp/ch-cloud-rca-cache.json`:
-
-```json
-{
-  "paths": {
-    "postgresInstancePrometheusGet": "/v1/organizations/{organizationId}/postgres/{postgresId}/prometheus",
-    "slowQueryPatternsGetList": "/v1/organizations/{organizationId}/postgres/{postgresId}/slowQueryPatterns"
-  },
-  "role_map": {
-    "call_count": "callCount",
-    "total_duration": "totalDurationUs",
-    "total_rows": "totalRows",
-    "blocks_read_from_disk": "totalSharedBlksRead",
-    "blocks_served_from_cache": "totalSharedBlksHit",
-    ...
-  }
-}
-```
-
-`cat /tmp/ch-cloud-rca-cache.json` is also a useful debugging
-hook between sessions: it shows exactly what the agent thinks
-the API looks like.
-
-## Invalidating the cache
-
-Two reasons to invalidate before the 24h TTL expires:
-
-1. A request returned `HTTP 400` with a message mentioning a
-   field name that's in `role_map` — the field was renamed or
-   removed. Re-fetch.
-2. The user explicitly asks for a refresh. Run
-   `rm /tmp/ch-cloud-rca-cache.json` and re-run discovery.
-
-Don't invalidate on every 4xx — date-format or value errors
-won't shift the spec.
+If caching, store only schema metadata, not credentials or response data, in a task-specific location. A 24-hour cache is a convenience, not a freshness guarantee. Refresh when the user requests it or a response indicates schema drift; ordinary authentication or invalid-value errors need their own diagnosis.
 
 ## Operations to locate
 
@@ -182,5 +114,4 @@ query_text               -> queryText
 db_operation             -> dbOperation
 ```
 
-Always rebuild from the live spec; don't paste this in as a
-substitute for discovery.
+Use the live spec or a verified recent mapping; this historical snapshot is not a substitute for discovery.

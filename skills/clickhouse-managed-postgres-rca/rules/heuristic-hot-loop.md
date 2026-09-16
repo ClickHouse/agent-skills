@@ -22,15 +22,14 @@ when citing values.
 ## The shape
 
 A pattern executing thousands of times per minute with a
-sub-millisecond mean is the application calling the database
-in a tight loop — typically:
+sub-millisecond mean may indicate repeated application calls; compare with expected request volume and concurrency. Candidate patterns include:
 
 - Rendering a list and issuing one query per row.
 - A poorly batched job: per-record `SELECT` or `INSERT` where
   a single statement could handle many.
 - A retry loop hammering a fast-but-pointless query.
 
-The database is healthy here. The caller is the problem.
+High call volume alone does not establish an N+1 problem or rule out database pressure. Confirm a repeated per-request call pattern before recommending batching.
 
 ## Confirmation signals
 
@@ -55,8 +54,7 @@ Weak/contraindicating evidence:
 ## Recommending a fix
 
 The fix lives in the application, not the database. Be
-specific about what to look for, since you can't see the app
-code:
+specific about what to look for, using available app code or traces, or a specific follow-up if they are unavailable:
 
 1. **Identify the caller.** Suggest the user grep app logs or
    tracing for the normalized `<query_text>`. The framework's

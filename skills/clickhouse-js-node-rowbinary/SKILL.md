@@ -1,11 +1,8 @@
 ---
 name: clickhouse-js-node-rowbinary
-description: >
-  Generate TypeScript/JavaScript code that reads/decodes AND writes/encodes
-  ClickHouse RowBinary streams for the ClickHouse HTTP server.
-  Use this skill whenever a user wants to parse or produce `RowBinary`,
-  `RowBinaryWithNames`, or `RowBinaryWithNamesAndTypes`.
-  Node.js only, doesn't cover browsers.
+description: Implement or optimize ClickHouse RowBinary readers and writers in Node.js. Use for RowBinary, RowBinaryWithNames, and RowBinaryWithNamesAndTypes codecs; excludes browser runtimes.
+metadata:
+  version: "0.3.0"
 ---
 
 # ClickHouse JS RowBinary Codec Generator for Node.js
@@ -13,7 +10,7 @@ description: >
 This skill generates both directions of the wire format: **readers** (decode
 bytes → values) and **writers** (encode values → bytes, the mirror). A given
 task normally needs only one side. This file is the shared entry point — the
-format gate plus the principles common to both directions; the per-direction
+format scope plus the principles common to both directions; the per-direction
 decisions, guidance, and the per-type reference tables live in two sibling files.
 
 **Pick your side — read only the one you need:**
@@ -28,35 +25,9 @@ decisions, guidance, and the per-type reference tables live in two sibling files
 The per-type code is real, split by direction under `src/readers/` and
 `src/writers/`.
 
-## First: is RowBinary even the right format?
+## Format and implementation scope
 
-RowBinary exists for throughput, but it is **not automatically the fastest
-path** — match the format to the shape of the data before committing to a
-bespoke parser.
-
-**Prefer a `JSON*` format (e.g. `JSONEachRow`) when** the result is mostly
-strings / JSON-like values that you consume wholesale — randomly accessing
-essentially every field, running string/regexp methods on them, treating values
-as text. V8's native `JSON.parse` is heavily optimized C++ and builds JS strings
-and objects faster than a JS-level RowBinary decoder can; pair it with HTTP
-response compression (`gzip` / `zstd`, which crushes JSON's repetitive keys) and
-the wire cost shrinks too.
-
-**RowBinary clearly wins when** the result is dominated by:
-
-- **Wide numerics** — `Int128`/`Int256`/`UInt128`/`UInt256`,
-  `Decimal128`/`Decimal256`.
-- **Binary / fixed-width blobs** — `IPv4`, `IPv6`, `UUID`, `FixedString`.
-- **High-volume fixed-width numeric columns** generally, where each value is a
-  single `DataView` read.
-
-**Prefer the `Native` format when** columnar load and client-side analytics are
-the main goal (fold/scan/filter columns, feed typed arrays to a Worker or WASM).
-`Native` is column-major, so it loads straight into one typed array per column
-with no transpose.
-
-For help choosing and consuming a `JSON*` format (or CSV / TSV) instead, use the
-**`clickhouse-js-node-coding`** skill.
+Honor a requested RowBinary format or an existing protocol requirement. When the user is choosing a format, use [format selection](format-selection.md) and benchmark representative data; format selection is not a gate before fulfilling an explicit codec request.
 
 ## Core guidance (both directions)
 
@@ -72,30 +43,20 @@ side-specific operational guidance is in [reader.md](reader.md) /
   plain per-type API. Only after it's correct (and tested) specialize it. Don't
   bake performance assumptions in before correctness.
 
-- **Monomorphize generic/composite types.** Emit specialized, inlined code per
-  type combination instead of passing functions as arguments where the type is
-  known ahead of time.
+- **Specialize where it is useful.** Start from the per-type APIs. For a requested performance pass on a fixed schema, consider inlining leaf operations and specializing composites; keep changes supported by correctness checks and a representative benchmark. Routine integrations do not require bespoke code generation.
 
-- **Inline the leaf ops.** The per-type `readX`/`writeX` functions are the
-  correct, composable reference; the generated codec should INLINE their bodies,
-  not call them, so the row loop is straight-line with no per-field indirection
-  (and so the fixed-width coalescing can fold the offset arithmetic together).
-
-- **Annotate the type per column.** Inlining erases the type structure, so put a
-  short comment above each column's encode/decode block naming the ClickHouse
-  type it handles.
+- **Keep type/offset behavior reviewable.** When generating inlined code, identify the ClickHouse type handled by each block where it is no longer clear from a function call.
 
 - **Shared scratch is not reentrant.** Some hot methods reuse a module-level
   scratch buffer as a write-then-read pair — correct only because the access is
   fully synchronous. An `async`/`yield` boundary between populating and reading
   it corrupts the value.
 
-- **TypeScript by default.** Generate TypeScript code and helpers unless the user
-  explicitly asks for plain JavaScript.
+- **Match the project language.** Use TypeScript for a new example when no language is specified; preserve an existing JavaScript project.
 
 ## Worked examples
 
-Six end-to-end examples with real speedup are catalogued in [EXAMPLES.md](EXAMPLES.md).
+Workload-specific examples and benchmark references are catalogued in [EXAMPLES.md](EXAMPLES.md).
 
 ## Out of scope
 

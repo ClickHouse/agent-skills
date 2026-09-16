@@ -1,7 +1,7 @@
 {
   "name": "@clickhouse/rowbinary",
   "version": "0.2.0",
-  "description": "RowBinary building blocks for Node.js — read and write (decode/encode) ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams. Ships with the clickhouse-js-node-rowbinary agent skill.",
+  "description": "RowBinary building blocks for Node.js \u2014 read and write (decode/encode) ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams. Ships with the clickhouse-js-node-rowbinary agent skill.",
   "homepage": "https://github.com/ClickHouse/clickhouse-js/tree/main/skills/clickhouse-js-node-rowbinary",
   "license": "Apache-2.0",
   "keywords": [
@@ -52,7 +52,8 @@
     "writer.md",
     "README.md",
     "EXAMPLES.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "format-selection.md"
   ],
   "agents": {
     "skills": [

@@ -19,7 +19,7 @@ CREATE TABLE metrics (
     age Int64,                -- Human age fits in UInt8
     year Int64,               -- Years fit in UInt16
     item_count Int64          -- Often small numbers
-)
+) ENGINE = Memory;
 ```
 
 **Correct (right-sized types):**
@@ -30,7 +30,7 @@ CREATE TABLE metrics (
     age UInt8,                -- 0-255 (sufficient for age)
     year UInt16,              -- 0-65,535 (sufficient for years)
     item_count UInt32         -- 0-4 billion (adjust based on actual max)
-)
+) ENGINE = Memory;
 ```
 
 **Numeric Type Reference:**

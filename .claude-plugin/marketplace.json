@@ -11,8 +11,8 @@
     {
       "name": "clickhouse-best-practices",
       "source": "./",
-      "description": "28 best practice rules for ClickHouse schema design, query optimization, and data ingestion — prioritized by impact",
-      "version": "0.3.0",
+      "description": "ClickHouse schema, query-performance, ingestion, and bounded database exploration guidance",
+      "version": "0.5.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -31,8 +31,8 @@
     {
       "name": "clickhouse-architecture-advisor",
       "source": "./skills/clickhouse-architecture-advisor/",
-      "description": "Workload-aware architecture decision skill for ClickHouse — ingestion strategies, partitioning, enrichment, upsert patterns, and pre-aggregation with explicit official/derived/field provenance",
-      "version": "0.1.0",
+      "description": "Compare ClickHouse architecture options for a specific workload, including ingestion, enrichment, mutable state, partitioning, and pre-aggregation. Use for system-design decisions and architecture reviews.",
+      "version": "0.2.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -51,8 +51,8 @@
     {
       "name": "clickhouse-js-node-troubleshooting",
       "source": "./skills/clickhouse-js-node-troubleshooting/",
-      "description": "Troubleshooting guide for the ClickHouse Node.js client (@clickhouse/client) — socket hang-up/ECONNRESET, Keep-Alive, data type mismatches, read-only users, proxy/pathname URLs, TLS, compression, logging, and query parameters",
-      "version": "0.1.0",
+      "description": "Diagnose failures in @clickhouse/client on Node.js, including connection resets, result handling, types, authentication, TLS, and query formatting. Use for reported client symptoms; excludes browser/edge clients.",
+      "version": "0.2.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -71,8 +71,8 @@
     {
       "name": "chdb-datastore",
       "source": "./skills/chdb-datastore/",
-      "description": "Pandas-compatible DataStore API for chDB — same pandas API backed by ClickHouse for 10-100x faster filter/group/aggregate/join, with built-in readers for S3, MySQL, PostgreSQL, MongoDB, ClickHouse Cloud, Iceberg, and Delta Lake and cross-source DataFrame joins",
-      "version": "4.1.0",
+      "description": "Use chDB DataStore for pandas-style analysis and cross-source DataFrame queries in Python. Applies when the project uses DataStore or the user wants to evaluate it for a pandas workload.",
+      "version": "4.1.1",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -92,8 +92,8 @@
     {
       "name": "chdb-sql",
       "source": "./skills/chdb-sql/",
-      "description": "Embedded ClickHouse SQL engine for Python via chDB — run analytical SQL on parquet/csv/json files, URLs, S3, and remote databases (Postgres, MySQL, MongoDB, ClickHouse Cloud, Iceberg, Delta Lake) with Session for stateful pipelines, parametrized queries, UDFs, and cross-source joins",
-      "version": "4.1.0",
+      "description": "Run embedded ClickHouse SQL in Python with chDB. Use for chdb.query(), sessions, DB-API connections, or a requested chDB analysis of files and remote sources.",
+      "version": "4.1.1",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -113,8 +113,8 @@
     {
       "name": "infra-clickhouse",
       "source": "./skills/infra-clickhouse/",
-      "description": "Local and cloud workflows for running ClickHouse with clickhousectl — local development (install ClickHouse, start a server, create schemas, seed data) and ClickHouse Cloud deployment (authenticate, create a service, migrate schemas, connect an application), with a decision tree routing between them",
-      "version": "0.3.0",
+      "description": "Set up or operate a local ClickHouse server or ClickHouse Cloud service with clickhousectl, including connections and requested schema migrations.",
+      "version": "0.4.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -134,8 +134,8 @@
     {
       "name": "infra-postgres",
       "source": "./skills/infra-postgres/",
-      "description": "Local and cloud workflows for running Postgres with clickhousectl — local Docker-backed Postgres for development (start, psql client, .env wiring, lifecycle) and managed ClickHouse Cloud Postgres services, beta (authentication, service creation, connections and TLS, runtime config, read replicas, failover, point-in-time restore), with a decision tree routing between them",
-      "version": "0.1.0",
+      "description": "Set up or operate local Docker-backed Postgres or ClickHouse Cloud Postgres with clickhousectl, including connections, configuration, replicas and restore.",
+      "version": "0.2.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -154,8 +154,8 @@
     {
       "name": "clickstack-otel-collector",
       "source": "./skills/clickstack-otel-collector/",
-      "description": "Step-by-step workflow for wiring an OpenTelemetry collector into a Managed ClickStack service on ClickHouse Cloud — deploying a new local collector or configuring an existing one, creating a dedicated ingest user, sending synthetic telemetry, and verifying it in ClickStack",
-      "version": "0.6.0",
+      "description": "Connect a new or existing OpenTelemetry collector to Managed ClickStack on ClickHouse Cloud, or diagnose and verify that ingestion path.",
+      "version": "0.7.0",
       "author": {
         "name": "ClickHouse Inc"
       },

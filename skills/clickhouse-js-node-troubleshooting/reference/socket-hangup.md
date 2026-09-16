@@ -2,14 +2,16 @@
 
 **Symptom:** `socket hang up` or `ECONNRESET` errors, often intermittent.
 
-**Root cause:** The server or load balancer closes the Keep-Alive connection before the client detects it and stops reusing the socket.
+**Possible causes:** stale Keep-Alive sockets, unconsumed response streams, network interruption, or a server/proxy closing a connection. A reset alone does not identify which occurred.
+
+For failed INSERTs or duplicate writes, first use [write outcomes and safe recovery](write-outcomes.md). Changing a timeout or socket setting does not establish whether a prior write committed.
 
 **Quick triage:**
 
 - Errors on every request → likely dangling stream (Step 1–2)
 - Errors only after idle periods → Keep-Alive timeout mismatch (Step 3)
 - Errors on long-running queries (INSERT FROM SELECT, etc.) → load balancer idle timeout (Step 4)
-- Can't diagnose → disable Keep-Alive as a last resort (Step 5)
+- Unresolved after checking streams/timeouts → consider a temporary Keep-Alive comparison (Step 5)
 
 ## Step 1 — Enable WARN-level logging to find dangling streams
 
@@ -189,13 +191,13 @@ Experimenting with the exact load balancer stack might be required.
 
 As a rule of thumb, set the interval slightly **below** your load balancer's idle timeout—typically by a few seconds (for example, often around 5–20 seconds), depending on your load balancer, proxies, and network behavior—while staying under the header limit for your expected query duration.
 
-**Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. This bypasses both the load balancer idle timeout and the Node.js header limit. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
+**Background work:** An HTTP connection loss does not automatically stop a running query, but deliberately closing it does not prove that the server accepted or completed the operation. Use an explicitly supported background-operation API only when that workflow is intended, retain its operation identity, and monitor the appropriate completion state. Missing log records are not a success or nonexecution signal; see [write outcomes](write-outcomes.md).
 
 ## Step 5 — Disable Keep-Alive entirely (last resort)
 
 > **Requires:** `>= 0.1.1` (Keep-Alive disable option introduced in 0.1.1).
 
-Adds overhead (new TCP connection per request) but eliminates all Keep-Alive issues:
+A temporary comparison without socket reuse can help isolate Keep-Alive-related failures. It adds connection overhead and does not resolve other causes of connection resets:
 
 ```js
 const client = createClient({

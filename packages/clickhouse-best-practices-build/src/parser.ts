@@ -219,6 +219,7 @@ export async function parseRuleFile(filePath: string): Promise<RuleFile> {
   const section = frontmatter.section || sectionMap[area] || 0
 
   const rule: Rule = {
+    body: ruleLines.slice(titleLine + 1).filter(line => !/^\*\*Impact:/.test(line)).join('\n').trim(),
     id: '', // Will be assigned by build script based on sorted order
     title: frontmatter.title || title,
     section: section,

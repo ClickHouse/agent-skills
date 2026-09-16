@@ -16,7 +16,7 @@ The existing best-practices skill is rule-first and documentation-first. This sk
 
 ## Recommendation categories
 
-Every recommendation must be labeled as exactly one of:
+Distinguish the provenance of recommendations; explicit labels are useful for structured reviews:
 
 - `official` — directly backed by official ClickHouse documentation
 - `derived` — reasoned from official documentation and core ClickHouse behavior
@@ -38,7 +38,7 @@ Use this skill when the user is:
 Use `clickhouse-best-practices` for:
 - concrete schema and query rule checks
 - low-level design validation
-- docs-backed enforcement
+- workload-aware validation against documented behavior
 
 Use this skill for:
 - when / why / how decisioning
@@ -56,7 +56,7 @@ Use this skill for:
 
 ## Output contract
 
-Responses should typically include:
+For a comprehensive review, consider the optional format in `examples/review-format.md`. A focused answer can omit sections that do not help the decision:
 1. workload summary
 2. key decisions
 3. recommendations with provenance labels

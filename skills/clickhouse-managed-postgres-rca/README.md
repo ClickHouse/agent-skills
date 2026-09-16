@@ -15,7 +15,7 @@ pull top slow query patterns, triage the signal shape against
 a small library of heuristics, and produce a structured
 recommendation.
 
-## v0.1 heuristic library
+## Heuristic library
 
 - **Full scan** — read-path patterns with high
   blocks-read-per-row.
@@ -35,5 +35,4 @@ the instance. It writes the SQL (or app-side change) the human
 should make and explains the reasoning.
 
 Both APIs are currently in Beta. The skill resolves exact
-paths and field names from the OpenAPI spec on first use, so
-it remains correct as the surface evolves.
+paths and field names from the OpenAPI spec on first use, and reports missing fields or incompatible responses instead of assuming the surface is unchanged.

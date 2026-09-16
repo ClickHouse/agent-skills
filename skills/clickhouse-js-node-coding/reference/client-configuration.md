@@ -6,17 +6,14 @@
 > - `clickhouse_setting_*` / `ch_*` URL parameters: client `>= 1.0.0`.
 > - `keep_alive.idle_socket_ttl` (Node-only): client `>= 1.0.0`.
 
-## Answer checklist
+## Decision points
 
 When answering configuration questions, include the relevant points:
 
 - Show `createClient` from `@clickhouse/client` with explicit fields when the
   user is writing code; this is easier to read and review than encoding
   everything into a URL string.
-- When mentioning the URL form for environment variables / DSNs: show a **Bash**
-  `export` with the literal URL value, and `createClient({ url: process.env.CLICKHOUSE_URL })`
-  in the Node code. **Never construct a URL in application code** — no string
-  concatenation, no template literals, no query-string builders.
+- Use existing connection configuration. Prefer explicit fields or an environment-provided URL; if constructing a URL is needed, encode its components correctly and keep secrets out of source and logs.
 - If URL parameters and object fields both set the same option, URL parameters
   override the rest of the configuration object.
 - If `clickhouse_settings` appear on `createClient`, explain that they are
@@ -24,8 +21,7 @@ When answering configuration questions, include the relevant points:
   `insert()`, `command()`, or `exec()` calls.
 - Remind long-running services to close the client during graceful shutdown.
 - The `application` field sets the name that appears in `system.query_log`.
-  Do **not** mention any specific HTTP header name — the client handles header
-  mapping internally and the header names are an implementation detail.
+  The client handles the HTTP header mapping; inspect it only when relevant to debugging.
 
 ## Minimal client
 

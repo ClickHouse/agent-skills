@@ -1,9 +1,9 @@
 # ClickHouse Best Practices
 
-**Version 0.1.0**  
+**Version 0.5.0**
 ClickHouse Inc  
-January 2026
-ClickHouse 24.1+
+September 2026
+ClickHouse Version-dependent; verify features and settings on the target deployment
 
 > **Note:**  
 > This document is mainly for agents and LLMs to follow when designing,  
@@ -15,7 +15,7 @@ ClickHouse 24.1+
 
 ## Abstract
 
-Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization.
+ClickHouse guidance for schema design, query optimization, ingestion, and bounded agent access. Read task-relevant rules and verify workload-dependent recommendations against query plans, measurements, and the deployed version.
 
 ---
 
@@ -25,7 +25,7 @@ Comprehensive best practices for ClickHouse database optimization. Covers schema
    - 1.1 [Avoid Nullable Unless Semantically Required](#11-avoid-nullable-unless-semantically-required)
    - 1.2 [Consider Starting Without Partitioning](#12-consider-starting-without-partitioning)
    - 1.3 [Filter on ORDER BY Columns in Queries](#13-filter-on-order-by-columns-in-queries)
-   - 1.4 [Keep Partition Cardinality Low (100-1,000 Values)](#14-keep-partition-cardinality-low-100-1000-values)
+   - 1.4 [Keep Partition Cardinality Bounded](#14-keep-partition-cardinality-bounded)
    - 1.5 [Minimize Bit-Width for Numeric Types](#15-minimize-bit-width-for-numeric-types)
    - 1.6 [Order Columns by Cardinality (Low to High)](#16-order-columns-by-cardinality-low-to-high)
    - 1.7 [Plan PRIMARY KEY Before Table Creation](#17-plan-primary-key-before-table-creation)
@@ -53,9 +53,9 @@ Comprehensive best practices for ClickHouse database optimization. Covers schema
    - 3.5 [Use Async Inserts for High-Frequency Small Batches](#35-use-async-inserts-for-high-frequency-small-batches)
    - 3.6 [Use Native Format for Best Insert Performance](#36-use-native-format-for-best-insert-performance)
 4. [Agent Integration](#4-agent-integration) — **CRITICAL**
-   - 4.1 [Apply Safety Limits to Agent-Generated Queries](#41-apply-safety-limits-to-agent-generated-queries)
+   - 4.1 [Bound Live Query Resource Use](#41-bound-live-query-resource-use)
    - 4.2 [Connect AI Agents to ClickHouse](#42-connect-ai-agents-to-clickhouse)
-   - 4.3 [Discover Schema Before Querying](#43-discover-schema-before-querying)
+   - 4.3 [Discover Relevant Schema Before Querying](#43-discover-relevant-schema-before-querying)
 
 ---
 
@@ -63,79 +63,67 @@ Comprehensive best practices for ClickHouse database optimization. Covers schema
 
 **Impact: CRITICAL**
 
-Proper schema design is foundational to ClickHouse performance. ORDER BY is immutable after table creation; wrong choices require full data migration. Includes primary key selection, data types, partitioning strategy, and JSON usage. Column types and ordering can impact query speed by orders of magnitude.
+Proper schema design is foundational to ClickHouse performance. Changing existing physical ordering generally requires migration; constrained metadata-only sorting-key changes are possible. Includes primary key selection, data types, partitioning strategy, and JSON usage. Column types and ordering can impact query speed by orders of magnitude.
 
 ### 1.1 Avoid Nullable Unless Semantically Required
 
 **Impact: HIGH (Nullable adds storage overhead; use DEFAULT values instead)**
 
-Nullable columns maintain a separate UInt8 column for tracking null values, increasing storage and degrading performance. Use DEFAULT values instead when feasible.
+Nullable columns maintain a separate UInt8 column for tracking null values, increasing storage and degrading performance. Use DEFAULT values only when they preserve the domain meaning. Unknown values must not silently become real values such as age zero or the current timestamp.
 
-**Incorrect: Nullable everywhere**
+**Incorrect (Nullable everywhere):**
 
 ```sql
 CREATE TABLE users (
     id Nullable(UInt64),              -- IDs should never be null
     name Nullable(String),            -- Empty string is fine
-    age Nullable(UInt8),              -- 0 is a valid default
+    age Nullable(UInt8),              -- Keep nullable if unknown differs from age zero
     login_count Nullable(UInt32)      -- 0 is a valid default
-)
+) ENGINE = Memory;
 ```
 
-**Correct: DEFAULT values, Nullable only when semantic**
+**Correct (DEFAULT values, Nullable only when semantic):**
 
 ```sql
 CREATE TABLE users (
     id UInt64,                                    -- Never null
     name String DEFAULT '',                       -- Empty = unknown
-    age UInt8 DEFAULT 0,                          -- 0 = unknown
+    age Nullable(UInt8),                          -- Unknown differs from age zero
     login_count UInt32 DEFAULT 0,                 -- 0 = never logged in
     deleted_at Nullable(DateTime),                -- NULL = not deleted (semantic!)
     parent_id Nullable(UInt64)                    -- NULL = no parent (semantic!)
-)
+) ENGINE = Memory;
 ```
 
 **When Nullable IS appropriate:**
 
 | Use Case | Why |
-
 |----------|-----|
-
 | `deleted_at` | NULL = "not deleted", timestamp = "deleted at X" |
-
 | `parent_id` | NULL = "no parent", value = "has parent" |
-
 | `discount_percent` | NULL = "no discount", 0 = "0% discount" |
 
 **Defaults instead of Nullable:**
 
 | Type | Default |
-
 |------|---------|
-
 | String | `''` (empty string) |
-
 | UInt*/Int* | `0` |
+| DateTime | A domain-approved default; retain NULL for unknown timestamps |
+| UUID | Generate only for a new identity; retain NULL for an unknown identity |
 
-| DateTime | `now()` or `toDateTime(0)` |
-
-| UUID | `generateUUIDv4()` |
-
-Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https://clickhouse.com/docs/best-practices/select-data-types)
+Reference: [Select Data Types](https://clickhouse.com/docs/best-practices/select-data-types)
 
 ### 1.2 Consider Starting Without Partitioning
 
 **Impact: MEDIUM (Add partitioning later when you have clear lifecycle requirements)**
 
 Start without partitioning and add it later only if:
-
 - You have clear data lifecycle requirements (retention, archiving)
-
 - Your access patterns clearly benefit from partition pruning
-
 - You understand the cardinality implications
 
-**Example: start simple**
+**Example (start simple):**
 
 ```sql
 -- Start simple, no partitioning
@@ -154,38 +142,33 @@ ORDER BY (event_type, timestamp);
 **When to add partitioning:**
 
 | Need | Add Partitioning? |
-
 |------|-------------------|
-
 | Time-based data retention | Yes |
-
 | Archive old data to cold storage | Yes |
-
 | Query performance on time ranges | Maybe (test first) |
-
 | No specific lifecycle needs | No |
 
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
+Reference: [Choosing a Partitioning Key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
 
 ### 1.3 Filter on ORDER BY Columns in Queries
 
-**Impact: CRITICAL (Skipping prefix columns prevents index usage)**
+**Impact: CRITICAL (Leading-key filters often prune best; verify later-key filters with EXPLAIN)**
 
-Even with good schema design, queries must use ORDER BY columns to benefit. Skipping prefix columns or filtering on non-ORDER BY columns prevents index usage.
+Leading primary-key filters often provide the strongest granule pruning. Later-key filters can still use the sparse index, with effectiveness depending on earlier-key cardinality and data distribution. Filters outside the primary key may benefit from partition pruning, skipping indexes, or projections. Use EXPLAIN to check the actual plan; do not add predicates that change the requested result just to match a key.
 
-**Incorrect: skips prefix or uses non-ORDER BY columns**
+**Example (filters needing plan inspection):**
 
 ```sql
 -- Given: ORDER BY (tenant_id, event_type, timestamp)
 
--- Skips prefix columns - can't use index effectively
+-- Later-key filter: inspect whether it prunes enough granules
 SELECT * FROM events WHERE event_type = 'click';
 
--- Filter on column not in ORDER BY - full table scan
+-- Non-key filter: inspect other indexes and scan volume
 SELECT * FROM events WHERE user_agent LIKE '%Chrome%';
 ```
 
-**Correct: uses ORDER BY prefix**
+**Example (when tenant-scoped results are requested):**
 
 ```sql
 -- Given: ORDER BY (tenant_id, event_type, timestamp)
@@ -205,42 +188,37 @@ WHERE tenant_id = 123 AND event_type = 'click' AND timestamp >= '2024-01-01';
 **Index usage reference:**
 
 | Filter | Index Used? |
-
 |--------|-------------|
-
 | `WHERE tenant_id = 123` | Full |
-
 | `WHERE tenant_id = 123 AND event_type = 'click'` | Full |
+| `WHERE event_type = 'click'` | Possible; distribution-dependent |
+| `WHERE timestamp > '2024-01-01'` | Possible; distribution-dependent |
 
-| `WHERE event_type = 'click'` | None (skipped prefix) |
+Reference: [Choosing a Primary Key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
 
-| `WHERE timestamp > '2024-01-01'` | None (skipped both) |
-
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-primary-key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
-
-### 1.4 Keep Partition Cardinality Low (100-1,000 Values)
+### 1.4 Keep Partition Cardinality Bounded
 
 **Impact: HIGH (Too many partitions cause part explosion and 'too many parts' errors)**
 
-Too many distinct partition values create excessive data parts, eventually triggering "too many parts" errors. ClickHouse enforces limits via `max_parts_in_total` and `parts_to_throw_insert` settings.
+Choose partition granularity from retention, insert volume, and part size; 100–1,000 is a rough upper-range heuristic, not a minimum or target. Too many distinct partition values create excessive data parts, eventually triggering "too many parts" errors. ClickHouse enforces limits via `max_parts_in_total` and `parts_to_throw_insert` settings.
 
-**Incorrect: high cardinality partitioning**
+**Incorrect (high cardinality partitioning):**
 
 ```sql
 -- High cardinality = too many partitions
-CREATE TABLE events (...)
+CREATE TABLE events (timestamp DateTime, user_id UInt64)
 ENGINE = MergeTree()
 PARTITION BY user_id  -- Millions of partitions!
 ORDER BY (timestamp);
 
 -- Daily partitions can grow unbounded over years
-CREATE TABLE logs (...)
+CREATE TABLE logs (timestamp DateTime, service String)
 ENGINE = MergeTree()
 PARTITION BY toDate(timestamp)  -- 3650 partitions over 10 years
 ORDER BY (service, timestamp);
 ```
 
-**Correct: bounded cardinality**
+**Correct (bounded cardinality):**
 
 ```sql
 -- Monthly partitions = 12 per year, bounded cardinality
@@ -268,10 +246,10 @@ WHERE table = 'events' AND active
 GROUP BY partition
 ORDER BY partition;
 
--- Warning signs: hundreds or thousands of partitions
+-- Investigate many small parts and partitions relative to retention and volume
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
+Reference: [Choosing a Partitioning Key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
 
 ### 1.5 Minimize Bit-Width for Numeric Types
 
@@ -279,7 +257,7 @@ Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-k
 
 Select the smallest numeric type that accommodates your data range. Prefer unsigned types when negative values aren't needed.
 
-**Incorrect: oversized types**
+**Incorrect (oversized types):**
 
 ```sql
 CREATE TABLE metrics (
@@ -287,10 +265,10 @@ CREATE TABLE metrics (
     age Int64,                -- Human age fits in UInt8
     year Int64,               -- Years fit in UInt16
     item_count Int64          -- Often small numbers
-)
+) ENGINE = Memory;
 ```
 
-**Correct: right-sized types**
+**Correct (right-sized types):**
 
 ```sql
 CREATE TABLE metrics (
@@ -298,54 +276,45 @@ CREATE TABLE metrics (
     age UInt8,                -- 0-255 (sufficient for age)
     year UInt16,              -- 0-65,535 (sufficient for years)
     item_count UInt32         -- 0-4 billion (adjust based on actual max)
-)
+) ENGINE = Memory;
 ```
 
 **Numeric Type Reference:**
 
 | Type | Range | Bytes |
-
 |------|-------|-------|
-
 | UInt8 | 0 to 255 | 1 |
-
 | UInt16 | 0 to 65,535 | 2 |
-
 | UInt32 | 0 to 4.3 billion | 4 |
-
 | UInt64 | 0 to 18 quintillion | 8 |
-
 | Int8 | -128 to 127 | 1 |
-
 | Int16 | -32,768 to 32,767 | 2 |
-
 | Int32 | -2.1 billion to 2.1 billion | 4 |
-
 | Int64 | -9 quintillion to 9 quintillion | 8 |
 
-Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https://clickhouse.com/docs/best-practices/select-data-types)
+Reference: [Select Data Types](https://clickhouse.com/docs/best-practices/select-data-types)
 
 ### 1.6 Order Columns by Cardinality (Low to High)
 
-**Impact: CRITICAL (Enables granule skipping; high-cardinality first prevents index pruning)**
+**Impact: CRITICAL (Key order affects pruning and compression; choose useful filter columns first)**
 
-Since the sparse primary index operates on data blocks (granules) rather than individual rows, low-cardinality leading columns create more useful index entries that can skip entire blocks. Place lower-cardinality columns before higher-cardinality ones in the ordering key.
+Since the sparse primary index operates on data blocks (granules) rather than individual rows, low-cardinality leading columns create more useful index entries that can skip entire blocks. Among columns useful to the workload, lower-cardinality columns often work well earlier. A high-cardinality leading key is appropriate for selective lookups on that key; cardinality alone does not determine pruning.
 
-**Incorrect: high cardinality first**
+**Incorrect (high cardinality first):**
 
 ```sql
--- UUID first means no pruning benefit
-CREATE TABLE events (...)
+-- Poor fit when the workload filters event_type/time rather than event_id
+CREATE TABLE events (event_id UUID, event_type LowCardinality(String), timestamp DateTime, event_date Date DEFAULT toDate(timestamp))
 ENGINE = MergeTree()
 ORDER BY (event_id, event_type, timestamp);
--- Every granule has different event_id values, index can't skip anything
+-- event_id lookups can prune well, but event_type/time filters may prune poorly
 ```
 
-**Correct: low cardinality first**
+**Correct (low cardinality first):**
 
 ```sql
 -- Low cardinality first enables pruning
-CREATE TABLE events (...)
+CREATE TABLE events (event_id UUID, event_type LowCardinality(String), timestamp DateTime, event_date Date DEFAULT toDate(timestamp))
 ENGINE = MergeTree()
 ORDER BY (event_type, event_date, event_id);
 -- Index can skip entire event_type groups
@@ -354,28 +323,23 @@ ORDER BY (event_type, event_date, event_id);
 **Column Order Guidelines:**
 
 | Position | Cardinality | Examples |
-
 |----------|-------------|----------|
-
 | 1st | Low (few distinct values) | event_type, status, country |
-
 | 2nd | Date (coarse granularity) | toDate(timestamp) |
-
 | 3rd+ | Medium-High | user_id, session_id |
-
 | Last | High (if needed) | event_id, uuid |
 
 **Tip:** Use `toDate(timestamp)` instead of raw `DateTime` columns when day-level filtering suffices - this reduces index size from 32-bit to 16-bit representations.
 
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-primary-key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
+Reference: [Choosing a Primary Key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
 
 ### 1.7 Plan PRIMARY KEY Before Table Creation
 
-**Impact: CRITICAL (ORDER BY is immutable; wrong choice requires full data migration)**
+**Impact: CRITICAL (Changing physical ordering generally requires a new table and data migration)**
 
-ClickHouse's ORDER BY clause defines physical data ordering and the sparse index. Unlike other databases, **ORDER BY cannot be modified after table creation**. A wrong choice requires creating a new table and migrating all data.
+ORDER BY defines physical ordering; PRIMARY KEY defines the sparse index and defaults to ORDER BY when not specified separately. Plan both around the workload. Reordering existing data generally requires a new table and migration. `ALTER TABLE ... MODIFY ORDER BY` supports constrained metadata-only changes; it does not re-sort existing parts or change the primary key.
 
-**Incorrect: arbitrary ORDER BY without query analysis**
+**Incorrect (arbitrary ORDER BY without query analysis):**
 
 ```sql
 -- Creating table without analyzing query patterns
@@ -389,10 +353,10 @@ ORDER BY (event_id);  -- Chosen arbitrarily
 
 -- Later: "Most queries filter by user_id!"
 -- Cannot fix with: ALTER TABLE events MODIFY ORDER BY (user_id, timestamp)
--- ERROR: Cannot modify ORDER BY
+-- Existing user_id/timestamp cannot simply replace the current physical order
 ```
 
-**Correct: query-driven ORDER BY selection**
+**Correct (query-driven ORDER BY selection):**
 
 ```sql
 -- Step 1: Document query patterns BEFORE creating table
@@ -419,39 +383,34 @@ ORDER BY (user_id, event_date, event_id);
 ```
 
 **Pre-creation checklist:**
-
-- [ ] Listed top 5-10 query patterns
-
+- [ ] Identified the important query patterns
 - [ ] Identified columns in WHERE clauses with frequency
-
 - [ ] Prioritized columns that exclude large numbers of rows
-
-- [ ] Ordered columns by cardinality (low first, high last)
-
+- [ ] Used cardinality to refine the order among useful filter columns
 - [ ] Limited to 4-5 key columns (typically sufficient)
 
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-primary-key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
+References: [Choosing a Primary Key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key) · [MODIFY ORDER BY](https://clickhouse.com/docs/sql-reference/statements/alter/order-by)
 
 ### 1.8 Prioritize Filter Columns in ORDER BY
 
-**Impact: CRITICAL (Columns not in ORDER BY cause full table scans)**
+**Impact: CRITICAL (Align primary keys with important filters to reduce scanned granules)**
 
-Prioritize columns frequently used in query filters (WHERE clause), especially those that exclude large numbers of rows. Queries filtering on columns not in ORDER BY result in full table scans.
+Prioritize columns frequently used in query filters (WHERE clause), especially those that exclude large numbers of rows. Filters outside the primary key may still use partition pruning, skipping indexes, or projections; inspect the actual plan.
 
-**Incorrect: ORDER BY doesn't match query patterns**
+**Incorrect (ORDER BY doesn't match query patterns):**
 
 ```sql
 -- If most queries filter by tenant_id:
-CREATE TABLE events (...)
+CREATE TABLE events (event_id UUID, tenant_id UInt64, event_date Date)
 ENGINE = MergeTree()
 ORDER BY (event_id);  -- Queries by tenant_id will full-scan!
 ```
 
-**Correct: ORDER BY matches filter patterns**
+**Correct (ORDER BY matches filter patterns):**
 
 ```sql
 -- ORDER BY matches query filter patterns
-CREATE TABLE events (...)
+CREATE TABLE events (event_id UUID, tenant_id UInt64, event_date Date)
 ENGINE = MergeTree()
 ORDER BY (tenant_id, event_date, event_id);
 
@@ -468,21 +427,19 @@ SELECT * FROM events WHERE tenant_id = 123;
 -- Look for "PrimaryKey" with Key Condition
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-primary-key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
+Reference: [Choosing a Primary Key](https://clickhouse.com/docs/best-practices/choosing-a-primary-key)
 
 ### 1.9 Understand Partition Query Performance Trade-offs
 
 **Impact: MEDIUM (Partition pruning helps some queries; spanning many partitions hurts others)**
 
-Partitioning can help or hurt query performance:
-
+Preserve the requested time range: adding a time filter changes the answer. Partitioning can help or hurt query performance:
 - **Potential improvement**: Queries filtering by partition key may benefit from partition pruning
-
 - **Potential degradation**: Queries spanning many partitions increase total parts scanned
 
 ClickHouse automatically builds **MinMax indexes** on partition columns. Data merges occur **within partitions only**, not across them.
 
-**Incorrect: query scans all partitions**
+**Example (all-time count, no partition pruning):**
 
 ```sql
 -- Query must scan all partitions
@@ -490,7 +447,7 @@ SELECT count(*) FROM events
 WHERE event_type = 'click';  -- No partition pruning
 ```
 
-**Correct: query prunes to single partition**
+**Example (when the user requests a January-only count):**
 
 ```sql
 -- Query prunes to single partition
@@ -499,7 +456,7 @@ WHERE timestamp >= '2024-01-01' AND timestamp < '2024-02-01'
   AND event_type = 'click';
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
+Reference: [Choosing a Partitioning Key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
 
 ### 1.10 Use Enum for Finite Value Sets
 
@@ -507,12 +464,12 @@ Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-k
 
 Enum types provide validation at insert time and enable queries that exploit natural ordering. Use Enum8 (up to 256 values) or Enum16 (up to 65,536 values).
 
-**Incorrect: String without validation**
+**Incorrect (String without validation):**
 
 ```sql
 CREATE TABLE orders (
     status String    -- No validation, typos like "shiped" allowed
-)
+) ENGINE = Memory;
 
 -- Ordering requires CASE statements
 SELECT * FROM orders ORDER BY
@@ -523,12 +480,12 @@ SELECT * FROM orders ORDER BY
     END;
 ```
 
-**Correct: Enum with validation and ordering**
+**Correct (Enum with validation and ordering):**
 
 ```sql
 CREATE TABLE orders (
     status Enum8('pending' = 1, 'processing' = 2, 'shipped' = 3, 'delivered' = 4)
-)
+) ENGINE = Memory;
 
 -- Insert validation: invalid values rejected
 INSERT INTO orders VALUES ('shiped');  -- ERROR: Unknown element 'shiped'
@@ -543,22 +500,15 @@ SELECT * FROM orders WHERE status > 'processing';  -- shipped and delivered
 **Enum Guidelines:**
 
 | Scenario | Use |
-
 |----------|-----|
-
 | Fixed set of values known at schema time | Enum8/Enum16 |
-
 | Values may change frequently | LowCardinality(String) |
-
 | Need insert-time validation | Enum |
-
 | Need natural ordering in queries | Enum |
-
 | < 256 distinct values | Enum8 (1 byte) |
-
 | 256-65,536 distinct values | Enum16 (2 bytes) |
 
-Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https://clickhouse.com/docs/best-practices/select-data-types)
+Reference: [Select Data Types](https://clickhouse.com/docs/best-practices/select-data-types)
 
 ### 1.11 Use JSON Type for Dynamic Schemas
 
@@ -566,25 +516,25 @@ Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https:
 
 ClickHouse's JSON type splits JSON objects into separate sub-columns, enabling field-level query optimization. Use it for truly dynamic data, not everything.
 
-**Incorrect: schema bloat or opaque String**
+**Incorrect (schema bloat or opaque String):**
 
 ```sql
 -- BAD: Hundreds of nullable columns for event properties
 CREATE TABLE events (
     event_id UUID,
     prop_page_url Nullable(String),
-    prop_button_id Nullable(String),
+    prop_button_id Nullable(String)
     -- ... 100 more nullable columns
-)
+) ENGINE = Memory;
 
 -- BAD: JSON as String when you need field queries
 CREATE TABLE events (
     event_id UUID,
     properties String  -- No field-level optimization
-)
+) ENGINE = Memory;
 ```
 
-**Correct: JSON for dynamic, typed for known**
+**Correct (JSON for dynamic, typed for known):**
 
 ```sql
 -- Use JSON type for dynamic properties
@@ -608,6 +558,16 @@ WHERE event_type = 'page_view' AND properties.url = '/home';
 
 **When to use JSON:**
 
+| Scenario | Use JSON? |
+|----------|-----------|
+| Data structure varies unpredictably | Yes |
+| Field types/schemas change over time | Yes |
+| Need field-level querying | Yes |
+| Fixed, known schema | No (use typed columns) |
+| JSON as opaque blob (no field queries) | No (use String) |
+
+**Optimization: specify types for known paths:**
+
 ```sql
 CREATE TABLE events (
     properties JSON(
@@ -615,26 +575,10 @@ CREATE TABLE events (
         amount Float64,
         product_id UInt64
     )
-)
+) ENGINE = Memory;
 ```
 
-| Scenario | Use JSON? |
-
-|----------|-----------|
-
-| Data structure varies unpredictably | Yes |
-
-| Field types/schemas change over time | Yes |
-
-| Need field-level querying | Yes |
-
-| Fixed, known schema | No (use typed columns) |
-
-| JSON as opaque blob (no field queries) | No (use String) |
-
-**Optimization: specify types for known paths:**
-
-Reference: [https://clickhouse.com/docs/best-practices/use-json-where-appropriate](https://clickhouse.com/docs/best-practices/use-json-where-appropriate)
+Reference: [Use JSON Where Appropriate](https://clickhouse.com/docs/best-practices/use-json-where-appropriate)
 
 ### 1.12 Use LowCardinality for Repeated Strings
 
@@ -642,54 +586,53 @@ Reference: [https://clickhouse.com/docs/best-practices/use-json-where-appropriat
 
 String columns with repeated values store each value repeatedly. LowCardinality uses dictionary encoding for significant storage reduction.
 
-**Incorrect: plain String for repeated values**
+**Incorrect (plain String for repeated values):**
 
 ```sql
 CREATE TABLE events (
     country String,       -- "United States" stored 500M times
     browser String,       -- "Chrome" stored 300M times
     event_type String     -- "page_view" stored 800M times
-)
+) ENGINE = Memory;
 ```
 
-**Correct: LowCardinality for low unique counts**
+**Correct (LowCardinality for low unique counts):**
 
 ```sql
 CREATE TABLE events (
     country LowCardinality(String),      -- ~200 unique values
     browser LowCardinality(String),      -- ~50 unique values
     event_type LowCardinality(String)    -- ~100 unique values
-)
+) ENGINE = Memory;
 ```
 
 **When to use LowCardinality:**
+
+These are heuristics for dictionary cardinality, not a hard table-wide threshold. Distribution across parts and the queries matter.
+
+| Unique Values | Recommendation |
+|---------------|----------------|
+| < 10,000 | Use LowCardinality |
+| 10,000–100,000 | Benchmark both representations on representative data |
+| > 100,000 | May perform worse; measure before choosing |
 
 ```sql
 -- Check cardinality before deciding
 SELECT uniq(column_name) FROM table_name;
 ```
 
-| Unique Values | Recommendation |
-
-|---------------|----------------|
-
-| < 10,000 | Use LowCardinality |
-
-| > 10,000 | Use regular String |
-
 **LowCardinality vs FixedString:**
-
-```sql
--- FixedString: Only for truly fixed-length data
-country_code FixedString(2),    -- "US", "DE", "JP" - always 2 chars
-
--- LowCardinality: For variable-length low-cardinality strings
-country_name LowCardinality(String),  -- "United States", "Germany"
-```
 
 Reserve `FixedString` for strictly fixed-length data (e.g., 2-char country codes). For most low-cardinality text, `LowCardinality(String)` outperforms `FixedString`.
 
-Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https://clickhouse.com/docs/best-practices/select-data-types)
+```sql
+CREATE TABLE countries (
+    country_code FixedString(2), -- Fixed-width codes
+    country_name LowCardinality(String)
+) ENGINE = Memory;
+```
+
+References: [Select Data Types](https://clickhouse.com/docs/best-practices/select-data-types) · [LowCardinality](https://clickhouse.com/docs/sql-reference/data-types/lowcardinality)
 
 ### 1.13 Use Native Types Instead of String
 
@@ -697,7 +640,7 @@ Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https:
 
 Using String for all data wastes storage, prevents compression optimization, and makes comparisons slower. ClickHouse's column-oriented architecture benefits directly from optimal type selection.
 
-**Incorrect: String for everything**
+**Incorrect (String for everything):**
 
 ```sql
 CREATE TABLE events (
@@ -706,10 +649,10 @@ CREATE TABLE events (
     created_at String,      -- "2024-01-15 10:30:00" = 19 bytes
     count String,           -- "42" - can't do math!
     is_active String        -- "true" = 4 bytes
-)
+) ENGINE = Memory;
 ```
 
-**Correct: native types**
+**Correct (native types):**
 
 ```sql
 CREATE TABLE events (
@@ -718,52 +661,39 @@ CREATE TABLE events (
     created_at DateTime DEFAULT now(),           -- 4 bytes (vs 19)
     count UInt32 DEFAULT 0,                      -- 4 bytes, math works
     is_active Bool DEFAULT true                  -- 1 byte (vs 4)
-)
+) ENGINE = Memory;
 ```
 
 **Type Selection Quick Reference:**
 
 | Data | Use | Avoid |
-
 |------|-----|-------|
-
 | Sequential IDs | UInt32/UInt64 | String |
-
 | UUIDs | UUID | String |
-
 | Status/Category | Enum8 or LowCardinality(String) | String |
-
-| Timestamps | DateTime | DateTime64, String |
-
+| Timestamps | DateTime for seconds; DateTime64 for subsecond precision/range | String when time operations are needed |
 | Dates only | Date or Date32 | DateTime, String |
-
 | Counts | UInt8/16/32 (smallest that fits) | Int64, String |
-
 | Money | Decimal(P,S) or Int64 (cents) | Float64, String |
-
 | Booleans | Bool or UInt8 | String |
 
-Reference: [https://clickhouse.com/docs/best-practices/select-data-types](https://clickhouse.com/docs/best-practices/select-data-types)
+Reference: [Select Data Types](https://clickhouse.com/docs/best-practices/select-data-types)
 
 ### 1.14 Use Partitioning for Data Lifecycle Management
 
 **Impact: HIGH (DROP PARTITION is instant; DELETE is expensive row-by-row scan)**
 
 Partitioning is **primarily a data management technique, not a query optimization tool**. It excels at:
-
 - **Dropping data**: Remove entire partitions as single metadata operations
-
 - **TTL retention**: Implement time-based retention policies efficiently
-
 - **Tiered storage**: Move old partitions to cold storage
-
 - **Archiving**: Move partitions between tables
 
-**Incorrect: no time alignment for lifecycle**
+**Incorrect (no time alignment for lifecycle):**
 
 ```sql
 -- Cannot efficiently drop old data by time
-CREATE TABLE events (...)
+CREATE TABLE events (timestamp DateTime, event_type LowCardinality(String))
 ENGINE = MergeTree()
 PARTITION BY event_type  -- No time alignment
 ORDER BY (timestamp);
@@ -772,7 +702,7 @@ ORDER BY (timestamp);
 DELETE FROM events WHERE timestamp < '2023-01-01';
 ```
 
-**Correct: time-based for lifecycle**
+**Correct (time-based for lifecycle):**
 
 ```sql
 CREATE TABLE events (
@@ -782,16 +712,16 @@ CREATE TABLE events (
 ENGINE = MergeTree()
 PARTITION BY toStartOfMonth(timestamp)
 ORDER BY (event_type, timestamp)
-TTL timestamp + INTERVAL 1 YEAR DELETE;  -- Drops whole partitions
+TTL timestamp + INTERVAL 1 YEAR DELETE;  -- Expiration is applied during merges
 
 -- Fast: metadata-only operation
-ALTER TABLE events DROP PARTITION '202301';
+ALTER TABLE events DROP PARTITION '2023-01-01';
 
 -- Archive to cold storage
-ALTER TABLE events_archive ATTACH PARTITION '202301' FROM events;
+ALTER TABLE events_archive ATTACH PARTITION '2023-01-01' FROM events;
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
+Reference: [Choosing a Partitioning Key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)
 
 ---
 
@@ -810,21 +740,13 @@ ClickHouse's default hash join loads the RIGHT table entirely into memory. Choos
 **Algorithm selection:**
 
 | Algorithm | Best For | Trade-off |
-
 |-----------|----------|-----------|
-
 | `parallel_hash` | Small-to-medium in-memory tables | Default since 24.11; fast, concurrent |
-
 | `hash` | General purpose, all join types | Single-threaded hash table build |
-
 | `direct` | Dictionary lookups (INNER/LEFT only) | Fastest; no hash table construction |
-
 | `full_sorting_merge` | Tables already sorted on join key | Skips sort if pre-ordered; low memory |
-
 | `partial_merge` | Large tables, memory-constrained | Minimized memory; slower execution |
-
 | `grace_hash` | Large datasets, tunable memory | Flexible; disk-spilling capability |
-
 | `auto` | Adaptive algorithm selection | Tries hash first, falls back on memory pressure |
 
 **Example usage:**
@@ -844,7 +766,7 @@ SELECT * FROM table_a a JOIN table_b b ON b.pk_col = a.pk_col;
 
 **Note:** ClickHouse 24.12+ automatically positions smaller tables on the right side. For earlier versions, manually ensure the smaller table is on the RIGHT.
 
-Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
+Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
 ### 2.2 Consider Alternatives to JOINs
 
@@ -852,7 +774,7 @@ Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](
 
 Repeated JOINs to dimension tables add overhead. Dictionaries or denormalization shift computational work from query time to insert/pre-processing time.
 
-**Incorrect: JOIN on every query**
+**Incorrect (JOIN on every query):**
 
 ```sql
 -- JOIN on every query
@@ -902,20 +824,15 @@ JOIN customers c ON c.id = o.customer_id;
 **Approach comparison:**
 
 | Approach | Use Case | Performance |
-
 |----------|----------|-------------|
-
 | Dictionary | Frequent lookups to small dimension | Fastest (in-memory) |
-
 | Denormalization | Analytics always need enriched data | Fast (no join at query) |
-
 | IN subquery | Existence filtering | Often faster than JOIN |
-
 | JOIN | Infrequent or complex joins | Acceptable |
 
 **Critical dictionary caveat:** Dictionaries silently deduplicate duplicate keys, retaining only the final value. Only use when source has unique keys.
 
-Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
+Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
 ### 2.3 Filter Tables Before Joining
 
@@ -923,17 +840,17 @@ Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](
 
 Joining full tables then filtering wastes resources. Add filtering in `WHERE` or `JOIN ON` clauses. If automatic pushdown fails, restructure as a subquery.
 
-**Incorrect: join then filter**
+**Example (let the optimizer push down filters):**
 
 ```sql
--- Joins entire tables, then filters
+-- WHERE syntax does not imply that filtering happens after the JOIN
 SELECT o.order_id, c.name, o.total
 FROM orders o
 JOIN customers c ON c.id = o.customer_id
 WHERE o.created_at > '2024-01-01' AND c.country = 'US';
 ```
 
-**Correct: filter in subqueries before joining**
+**Example (rewrite if EXPLAIN shows pushdown is missing):**
 
 ```sql
 -- Filter in subqueries before joining
@@ -950,7 +867,7 @@ JOIN (
 ) c ON c.id = o.customer_id;
 ```
 
-**Even better - aggregate before joining:**
+**Example (aggregate first when the requested result is revenue by customer):**
 
 ```sql
 SELECT c.country, o.total_revenue
@@ -963,7 +880,7 @@ FROM (
 JOIN customers c ON c.id = o.customer_id;
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
+Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
 ### 2.4 Optimize NULL Handling in Outer JOINs
 
@@ -986,14 +903,11 @@ LEFT JOIN customers c ON c.id = o.customer_id;
 **When to use:**
 
 | Setting | Behavior | Use Case |
-
 |---------|----------|----------|
-
 | `join_use_nulls = 0` (default) | Default values (empty string, 0) for non-matches | When you can handle default values |
-
 | `join_use_nulls = 1` | NULL for non-matches | When you need to distinguish "no match" from "matched with default" |
 
-Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
+Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
 ### 2.5 Use ANY JOIN When Only One Match Needed
 
@@ -1001,7 +915,7 @@ Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](
 
 Use `ANY` JOINs when you only need a single match rather than all matches. They consume less memory and execute faster.
 
-**Incorrect: returns all matches**
+**Incorrect (returns all matches):**
 
 ```sql
 -- Returns all matching rows, uses more memory
@@ -1010,7 +924,7 @@ FROM orders o
 LEFT JOIN customers c ON c.id = o.customer_id;
 ```
 
-**Correct: returns first match only**
+**Correct (returns first match only):**
 
 ```sql
 -- Returns only first match per row, faster and less memory
@@ -1022,16 +936,12 @@ LEFT ANY JOIN customers c ON c.id = o.customer_id;
 **ANY JOIN types:**
 
 | Type | Behavior |
-
 |------|----------|
-
 | `LEFT ANY JOIN` | At most one match from right table |
-
 | `INNER ANY JOIN` | At most one match, only matching rows |
-
 | `RIGHT ANY JOIN` | At most one match from left table |
 
-Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
+Reference: [Minimize and Optimize JOINs](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
 ### 2.6 Use Data Skipping Indices for Non-ORDER BY Filters
 
@@ -1042,22 +952,16 @@ Queries filtering on columns not in ORDER BY cannot use the primary index and re
 **Important:** Skip indices should be considered **after** optimizing data types, primary key selection, and materialized views.
 
 **When to use:**
-
 - High overall cardinality but low cardinality within blocks
-
 - Rare values critical for search (error codes, specific IDs)
-
 - Column correlates with primary key
 
 **When NOT to use:**
-
 - As a first optimization step
-
 - Matching values scattered across many blocks
-
 - Without testing on real data
 
-**Incorrect: filtering on non-ORDER BY column**
+**Incorrect (filtering on non-ORDER BY column):**
 
 ```sql
 CREATE TABLE events (
@@ -1073,7 +977,7 @@ SELECT * FROM events
 WHERE event_type = 'click' AND user_id = 12345;
 ```
 
-**Correct: add skipping index**
+**Correct (add skipping index):**
 
 ```sql
 CREATE TABLE events (
@@ -1093,17 +997,11 @@ ALTER TABLE events MATERIALIZE INDEX idx_user_id;
 **Index types:**
 
 | Type | Best For | Example Filter |
-
 |------|----------|----------------|
-
 | `bloom_filter` | Equality on high-cardinality | `WHERE user_id = 123` |
-
 | `set(N)` | Low cardinality (N unique values) | `WHERE status IN ('a','b')` |
-
 | `minmax` | Range queries | `WHERE amount > 1000` |
-
 | `ngrambf_v1` | Text search | `WHERE text LIKE '%term%'` |
-
 | `tokenbf_v1` | Token search | `WHERE hasToken(text, 'word')` |
 
 **Validation:**
@@ -1114,15 +1012,15 @@ SELECT * FROM events WHERE user_id = 12345;
 -- Look for "Skip" in output showing granules skipped
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate](https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate)
+Reference: [Use Data Skipping Indices Where Appropriate](https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate)
 
 ### 2.7 Use Incremental MVs for Real-Time Aggregations
 
-**Impact: HIGH (Read thousands of rows instead of billions; minimal cluster overhead)**
+**Impact: HIGH (Read thousands of rows instead of billions; insert-time work depends on the view and workload)**
 
 Incremental MVs automatically apply the view's query to new data blocks at insert time. Results are written to a target table and partial results merge over time.
 
-**Incorrect: full aggregation on every query**
+**Incorrect (full aggregation on every query):**
 
 ```sql
 -- Full aggregation on every dashboard load
@@ -1132,12 +1030,12 @@ SELECT
     count() as events,
     uniq(user_id) as unique_users
 FROM events
-WHERE timestamp >= now() - INTERVAL 7 DAY
+WHERE timestamp >= toStartOfHour(now()) - INTERVAL 7 DAY
 GROUP BY event_type, hour;
 -- Scans 7 days of data every time (billions of rows)
 ```
 
-**Correct: incremental MV with pre-aggregation**
+**Correct (incremental MV with pre-aggregation):**
 
 ```sql
 -- Create target table for aggregated data
@@ -1166,20 +1064,17 @@ SELECT
     countMerge(events) as events,
     uniqMerge(unique_users) as unique_users
 FROM events_hourly
-WHERE hour >= now() - INTERVAL 7 DAY
+WHERE hour >= toStartOfHour(now()) - INTERVAL 7 DAY
 GROUP BY event_type, hour;
 -- Reads thousands of rows instead of billions
 ```
 
 **Key points:**
-
 - Use `-State` functions in MV, `-Merge` functions in query
-
 - Incremental - existing data not automatically included (backfill separately)
+- Measure insert overhead and target size. The example compares complete hour buckets; exact partial-hour windows require retaining finer-grained data.
 
-- Minimal cluster overhead at insert time
-
-Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](https://clickhouse.com/docs/best-practices/use-materialized-views)
+Reference: [Use Materialized Views](https://clickhouse.com/docs/best-practices/use-materialized-views)
 
 ### 2.8 Use Refreshable MVs for Complex Joins and Batch Workflows
 
@@ -1188,16 +1083,12 @@ Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](h
 Refreshable MVs execute queries periodically on a schedule. The full query re-executes and overwrites (or appends to) the target table.
 
 **Best for:**
-
 - Sub-millisecond latency where minor staleness is acceptable
-
 - Caching "top N" results or lookup tables
-
 - Complex multi-table joins requiring denormalization
-
 - Batch workflows and DAG dependencies
 
-**Incorrect: expensive join on every request**
+**Incorrect (expensive join on every request):**
 
 ```sql
 -- Complex join executed on every request
@@ -1211,7 +1102,7 @@ JOIN products p ON o.product_id = p.id
 WHERE o.created_at >= now() - INTERVAL 1 DAY;
 ```
 
-**Correct: refreshable MV**
+**Correct (refreshable MV):**
 
 ```sql
 -- Create refreshable MV that runs every 5 minutes
@@ -1235,16 +1126,13 @@ SELECT * FROM orders_denormalized WHERE segment = 'enterprise';
 **APPEND vs REPLACE modes:**
 
 | Mode | Behavior | Use Case |
-
 |------|----------|----------|
-
 | `REPLACE` (default) | Overwrites previous contents | Current state, lookup tables |
-
 | `APPEND` | Adds new rows to existing data | Periodic snapshots, historical accumulation |
 
 **Critical warning:** Query should run quickly compared to refresh interval. Don't schedule every 10 seconds if the query takes 10+ seconds.
 
-Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](https://clickhouse.com/docs/best-practices/use-materialized-views)
+Reference: [Use Materialized Views](https://clickhouse.com/docs/best-practices/use-materialized-views)
 
 ---
 
@@ -1252,7 +1140,7 @@ Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](h
 
 **Impact: CRITICAL**
 
-Each INSERT creates a data part. Single-row inserts overwhelm the merge process. Proper batching (10K-100K rows), async inserts for high-frequency writes, mutation avoidance, and letting background merges work are essential for stable cluster performance.
+Synchronous inserts create parts, potentially across multiple partitions. Frequent small synchronous inserts can overwhelm merges. Proper batching (10K-100K rows), async inserts for high-frequency writes, mutation avoidance, and letting background merges work are essential for stable cluster performance.
 
 ### 3.1 Avoid ALTER TABLE DELETE
 
@@ -1260,7 +1148,7 @@ Each INSERT creates a data part. Single-row inserts overwhelm the merge process.
 
 `ALTER TABLE DELETE` is a mutation that rewrites entire data parts. Use alternatives like lightweight DELETE, CollapsingMergeTree, or DROP PARTITION.
 
-**Incorrect: mutation delete**
+**Incorrect (mutation delete):**
 
 ```sql
 -- Mutation delete for cleanup
@@ -1314,36 +1202,27 @@ ALTER TABLE events DELETE WHERE toYYYYMM(timestamp) = 202301;
 **Delete strategy comparison:**
 
 | Method | Speed | When to Use |
-
 |--------|-------|-------------|
-
 | ALTER DELETE | Slow | Rare corrections only |
-
 | CollapsingMergeTree | Fast | Frequent soft deletes |
-
 | Lightweight DELETE | Medium | Occasional deletes |
-
 | DROP PARTITION | Instant | Bulk deletion by partition |
 
-Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
+Reference: [Avoid Mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
 
 ### 3.2 Avoid ALTER TABLE UPDATE
 
-**Impact: CRITICAL (Mutations rewrite entire parts; use ReplacingMergeTree instead)**
+**Impact: CRITICAL (Use lightweight UPDATE or ReplacingMergeTree instead)**
 
-`ALTER TABLE UPDATE` is a mutation - an asynchronous background process that rewrites entire data parts affected by the change. This is extremely expensive for frequent or large-scale operations.
+`ALTER TABLE UPDATE` is a mutation that rewrites entire data parts affected by the change. Use alternatives like lightweight UPDATE or ReplacingMergeTree.
 
 **Why mutations are problematic:**
-
 - **Write amplification:** Rewrite complete parts even for minor changes
-
 - **Disk I/O spike:** Degrades overall cluster performance
-
 - **No rollback:** Cannot be rolled back after submission
-
 - **Inconsistent reads:** SELECT may read mix of mutated and unmutated parts
 
-**Incorrect: mutation for updates**
+**Incorrect (mutation update):**
 
 ```sql
 -- Rewrites potentially huge amounts of data
@@ -1356,10 +1235,9 @@ WHERE product_id = 123;
 -- If product exists across 100 parts, rewrites ALL 100 parts
 ```
 
-**Correct: ReplacingMergeTree**
+**Correct - ReplacingMergeTree:**
 
 ```sql
--- Table design for updates
 CREATE TABLE users (
     user_id UInt64,
     name String,
@@ -1381,7 +1259,24 @@ SELECT user_id, argMax(status, updated_at) as status
 FROM users GROUP BY user_id;
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
+**Correct - Lightweight Updates (25.7+):**
+
+```sql
+-- Writes a patch, doesn't rewrite parts immediately
+UPDATE users SET status = 'inactive'
+WHERE last_login < now() - INTERVAL 90 DAY;
+-- Patches are applied during normal merges
+```
+
+**Update strategy comparison:**
+
+| Method | Speed | When to Use |
+|--------|-------|-------------|
+| ALTER UPDATE | Slow | Rare corrections only |
+| ReplacingMergeTree | Fast | Frequent updates |
+| Lightweight UPDATE | Medium | Occasional updates |
+
+Reference: [Avoid Mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
 
 ### 3.3 Avoid OPTIMIZE TABLE FINAL
 
@@ -1391,7 +1286,7 @@ Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://
 
 **Note:** `OPTIMIZE FINAL` is not the same as `FINAL`. The `FINAL` modifier in SELECT queries may be necessary for deduplicated results in ReplacingMergeTree and is generally fine to use.
 
-**Incorrect: OPTIMIZE FINAL after inserts**
+**Incorrect (OPTIMIZE FINAL after inserts):**
 
 ```sql
 -- Running OPTIMIZE FINAL after every batch insert
@@ -1402,7 +1297,7 @@ OPTIMIZE TABLE events FINAL;  -- Expensive and unnecessary!
 -- Cron: 0 * * * * clickhouse-client -q "OPTIMIZE TABLE events FINAL"
 ```
 
-**Correct: let background merges work**
+**Correct (let background merges work):**
 
 ```sql
 -- Let background merges handle optimization
@@ -1415,42 +1310,32 @@ SELECT * FROM events FINAL WHERE user_id = 123;
 ```
 
 **Problems with OPTIMIZE FINAL:**
-
 - Rewrites entire partition regardless of need
-
 - Ignores the ~150 GB part size safeguard
-
 - Can cause memory pressure or OOM errors
-
 - Lengthy execution time for large datasets
 
 **When OPTIMIZE FINAL may be acceptable:**
-
 - Finalizing data before table freezing
-
 - Preparing data for export operations
-
 - One-time operations, not regular workflows
 
 **Better alternatives:**
 
 | Need | Alternative |
-
 |------|-------------|
-
 | Deduplicate ReplacingMergeTree | Use `FINAL` modifier in SELECT |
-
 | Reduce part count | Rely on background merges |
 
-Reference: [https://clickhouse.com/docs/best-practices/avoid-optimize-final](https://clickhouse.com/docs/best-practices/avoid-optimize-final)
+Reference: [Avoid OPTIMIZE FINAL](https://clickhouse.com/docs/best-practices/avoid-optimize-final)
 
 ### 3.4 Batch Inserts Appropriately (10K-100K rows)
 
 **Impact: CRITICAL (Each INSERT creates a part; single-row inserts overwhelm merge process)**
 
-Each INSERT creates a new data part. Single-row or small-batch inserts create thousands of tiny parts, overwhelming the merge process and causing cluster instability.
+Synchronous inserts into MergeTree create parts, potentially several when a batch spans partitions. Async inserts buffer requests before creating parts. Single-row or small-batch inserts create thousands of tiny parts, overwhelming the merge process and causing cluster instability.
 
-**Incorrect: single-row or tiny batches**
+**Incorrect (single-row or tiny batches):**
 
 ```python
 # Single-row inserts - creates 10,000 parts!
@@ -1462,7 +1347,7 @@ for batch in chunks(events, 100):  # 100 rows per INSERT
     client.execute("INSERT INTO events VALUES", batch)
 ```
 
-**Correct: proper batch size**
+**Correct (proper batch size):**
 
 ```python
 # Ideal batch size: 10,000-100,000 rows
@@ -1474,27 +1359,23 @@ for batch in chunks(events, BATCH_SIZE):
 **Recommended batch sizes:**
 
 | Threshold | Value |
-
 |-----------|-------|
-
 | Minimum | 1,000 rows |
-
 | Ideal range | 10,000-100,000 rows |
-
 | Insert rate (sync) | ~1 insert per second |
 
 **Validation:**
 
 ```sql
--- Monitor part count (>3000 per partition blocks inserts)
-SELECT table, count() as parts, sum(rows) as total_rows
+-- Compare part counts with the deployment settings; thresholds vary
+SELECT table, partition, count() as parts, sum(rows) as total_rows
 FROM system.parts
 WHERE active AND database = 'default'
-GROUP BY table
+GROUP BY table, partition
 ORDER BY parts DESC;
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
+Reference: [Selecting an Insert Strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
 
 ### 3.5 Use Async Inserts for High-Frequency Small Batches
 
@@ -1502,7 +1383,7 @@ Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strat
 
 When client-side batching isn't practical, async inserts buffer server-side and create larger parts automatically.
 
-**Incorrect: small batches without async**
+**Incorrect (small batches without async):**
 
 ```python
 # Small batches without async_insert - creates too many parts
@@ -1510,7 +1391,17 @@ for batch in chunks(events, 100):
     client.execute("INSERT INTO events VALUES", batch)
 ```
 
-**Correct: enable async inserts**
+**Correct (enable async inserts):**
+
+```python
+# Enable async_insert with safe defaults
+client.execute("SET async_insert = 1")
+client.execute("SET wait_for_async_insert = 1")  # Confirms durability
+
+for batch in chunks(events, 100):
+    client.execute("INSERT INTO events VALUES", batch)
+# Server buffers and creates larger parts automatically
+```
 
 ```sql
 -- Configure server-side for specific users
@@ -1521,25 +1412,19 @@ ALTER USER my_app_user SETTINGS
     async_insert_busy_timeout_ms = 1000;    -- Flush after 1s
 ```
 
-**Flush conditions: whichever occurs first**
-
+**Flush conditions (whichever occurs first):**
 - Buffer reaches `async_insert_max_data_size`
-
 - Time threshold `async_insert_busy_timeout_ms` elapses
-
 - Maximum insert queries accumulate
 
 **Return modes:**
 
 | Setting | Behavior | Use Case |
-
 |---------|----------|----------|
-
 | `wait_for_async_insert=1` | Waits for flush, confirms durability | **Recommended** |
-
 | `wait_for_async_insert=0` | Fire-and-forget, unaware of errors | **Risky** - only if you accept data loss |
 
-Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
+Reference: [Selecting an Insert Strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
 
 ### 3.6 Use Native Format for Best Insert Performance
 
@@ -1547,16 +1432,12 @@ Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strat
 
 Data format affects insert performance. Native format is column-oriented with minimal parsing overhead.
 
-**Performance Ranking: fastest to slowest**
+**Performance Ranking (fastest to slowest):**
 
 | Format | Notes |
-
 |--------|-------|
-
 | **Native** | Most efficient. Column-oriented, minimal parsing. Recommended. |
-
 | **RowBinary** | Efficient row-based alternative |
-
 | **JSONEachRow** | Easier to use but expensive to parse |
 
 **Example:**
@@ -1566,7 +1447,7 @@ Data format affects insert performance. Native format is column-oriented with mi
 client.execute("INSERT INTO events VALUES", data, settings={'input_format': 'Native'})
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
+Reference: [Selecting an Insert Strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
 
 ---
 
@@ -1574,130 +1455,66 @@ Reference: [https://clickhouse.com/docs/best-practices/selecting-an-insert-strat
 
 **Impact: CRITICAL**
 
-AI agents working with ClickHouse need deliberate connection setup, schema discovery, and safe query execution. Agents that skip discovery write queries that ignore the sort key and scan full tables; agents without safety limits run unbounded queries that exhaust compute budgets. Covers MCP/CLI/HTTP connectivity and credential handling, the schema discovery workflow (databases → tables → columns → sort keys → skip indexes → sample → EXPLAIN), and query safety defaults (LIMIT, `max_execution_time`, `EXPLAIN ESTIMATE`).
+AI agents working with ClickHouse need deliberate connection setup, schema discovery, and safe query execution. Use supplied metadata or discover what the task is missing; inspect plans and resource budgets for unfamiliar or expensive queries. Covers MCP/CLI/HTTP connectivity and credential handling, task-relevant metadata discovery and plan inspection, and resource controls such as `max_execution_time` and plan estimates; bound previews without changing requested result semantics.
 
-### 4.1 Apply Safety Limits to Agent-Generated Queries
+### 4.1 Bound Live Query Resource Use
 
-**Impact: CRITICAL (Unbounded agent queries can scan billions of rows and saturate cluster resources)**
+**Impact: CRITICAL (Result limits alone do not bound scans, aggregation memory, or execution time)**
 
-Every agent-generated query must have explicit safety limits. A single unbounded query can scan billions of rows, consume all memory, or run for minutes.
+For live exploration, use the deployment's approved execution, scan, memory, and result limits. Reuse enforced settings profiles; add per-query limits where needed. Choose budgets for the service and task rather than assuming one safe scan size for every cluster.
 
-**Non-negotiable rules:**
+A LIMIT bounds returned rows, not necessarily scanned rows or aggregation work. A scalar aggregate does not need an artificial LIMIT. Preserve the requested result: a partition-key predicate is useful only if it is consistent with the question.
 
-- ALWAYS use `LIMIT` to cap returned rows (default `LIMIT 1000`)
-
-- ALWAYS bound scan size with `max_rows_to_read` or `max_bytes_to_read` — `LIMIT` alone does not prevent a full scan
-
-- ALWAYS set `max_execution_time` (default 30)
-
-- NEVER run `SELECT *` on large tables without `LIMIT` and scan caps
-
-- NEVER query without filtering on sort key or partition key columns
-
-**Incorrect:**
+**Incorrect (assuming LIMIT makes a full aggregation cheap):**
 
 ```sql
-SELECT * FROM events WHERE user_id = '123'
-```
-
-**Correct:**
-
-```sql
-SELECT *
+SELECT user_id, count()
 FROM events
-WHERE event_date >= today() - 7 AND user_id = '123'
-LIMIT 100
-SETTINGS max_execution_time = 30,
-         max_rows_to_read = 1000000000,
-         timeout_before_checking_execution_speed = 0
+GROUP BY user_id
+ORDER BY count() DESC
+LIMIT 10;
 ```
 
-**Recommended per-query settings:**
-
-| Setting | Recommended | Effect |
-
-|---------|-------------|--------|
-
-| `max_rows_to_read` | 1e9 | Caps rows scanned before materialization — the real guardrail |
-
-| `max_bytes_to_read` | 1e11 | Caps bytes scanned |
-
-| `max_execution_time` | 30 | Interrupts query when projected execution time exceeds N seconds (see `timeout_before_checking_execution_speed`) |
-
-| `timeout_before_checking_execution_speed` | 0 | Makes `max_execution_time` behave as a wall-clock limit (default `10` gives queries 10s of grace before timeouts kick in) |
-
-| `max_estimated_execution_time` | 60 | Rejects queries whose projected runtime exceeds N seconds — kills expensive queries before they start |
-
-| `max_result_rows` | 10000 | Caps output rows |
-
-| `result_overflow_mode` | `'break'` | Returns partial result of ≥ `max_result_rows`, rounded up to the next block boundary (it does not truncate exactly) |
-
-Limits are checked at block boundaries, so actual scans and runtime can overshoot slightly.
-
-**Cloud vs self-hosted defaults that matter:**
-
-| Setting | Self-hosted default | Cloud default |
-
-|---------|---------------------|---------------|
-
-| `max_memory_usage` | `0` (unlimited) | Depends on replica RAM — not unlimited |
-
-| `max_bytes_before_external_group_by` | `0` (no spill) | Half the memory per replica — spills automatically |
-
-| `max_bytes_before_external_sort` | `0` (no spill) | Half the memory per replica — spills automatically |
-
-| `max_rows_to_read` / `max_bytes_to_read` | `0` (unlimited) | `0` (unlimited) — must be set explicitly on both |
-
-| `max_execution_time` | `0` (unlimited) | `0` (unlimited) — must be set explicitly on both |
-
-On self-hosted, GROUP BY and ORDER BY have no automatic memory ceiling — set the `max_bytes_before_external_*` settings explicitly or enforce via profile. On Cloud, GROUP BY / ORDER BY spill to disk automatically and per-query memory is bounded, but scan and execution-time caps are still your job.
-
-**When things go wrong:**
-
-- **Timeout** (`TIMEOUT_EXCEEDED`): Narrow the time range, add sort key filters, run `EXPLAIN ESTIMATE` to check scan size before retrying. Consider `max_estimated_execution_time` to reject expensive queries up front.
-
-- **Memory error** (`MEMORY_LIMIT_EXCEEDED`): Reduce actual memory use — narrow filters, add `LIMIT`, lower GROUP BY cardinality, enable `max_bytes_before_external_group_by` (already on by default in Cloud, off on self-hosted), or split into smaller time windows. Raising `max_memory_usage` only helps if you're authorized and the ceiling is genuinely the problem; *lowering* it makes the error happen sooner, not later.
-
-- **Too many parts** (`TOO_MANY_PARTS`): Back off inserts — merges are behind. Wait and retry.
-
-**Role-level hardening (belt-and-suspenders):**
-
-Per-query `SETTINGS` only applies if the agent remembers to emit it. For production, the primary mechanism should be a [settings profile](https://clickhouse.com/docs/operations/settings/settings-profiles) plus [`readonly=2`](https://clickhouse.com/docs/operations/settings/constraints-on-settings#read-only) on the agent's role, so limits apply even when the agent forgets. Per-query settings are then defense in depth, not the fence.
-
-Per-query limits also don't stop abuse via many small queries — use [quotas](https://clickhouse.com/docs/operations/quotas) to bound requests or scanned bytes per interval.
-
-**Progressive exploration pattern:**
+**Correct (bounded exploration with an explicitly requested time range):**
 
 ```sql
--- 1. Count first (cheap)
-SELECT count() FROM events WHERE event_date = today();
-
--- 2. Small sample (if count is reasonable)
-SELECT * FROM events WHERE event_date = today() LIMIT 10;
-
--- 3. Full query with LIMIT and scan caps
-SELECT user_id, count() as events
+-- Illustrative budgets: adapt to the approved service limits.
+SELECT user_id, count()
 FROM events
 WHERE event_date = today()
 GROUP BY user_id
-ORDER BY events DESC
-LIMIT 100
+ORDER BY count() DESC
+LIMIT 10
 SETTINGS max_execution_time = 30,
-         max_rows_to_read = 1000000000,
-         timeout_before_checking_execution_speed = 0;
+         max_rows_to_read = 1000000,
+         max_memory_usage = 1000000000,
+         read_overflow_mode = 'throw',
+         timeout_overflow_mode = 'throw';
 ```
 
-Start narrow, widen only if needed:
+**Limits and completeness:**
 
-Reference: [https://clickhouse.com/docs/operations/settings/query-complexity](https://clickhouse.com/docs/operations/settings/query-complexity), [https://clickhouse.com/docs/operations/settings/query-level](https://clickhouse.com/docs/operations/settings/query-level)
+- Use EXPLAIN for potentially expensive plans. A count query is not automatically a cheap preflight.
+- Check the effective settings on the target service; Cloud and self-managed profiles can differ.
+- Prefer an error on budget exhaustion when a complete answer is required. Overflow modes that return partial results must be disclosed; never present a truncated aggregate as complete.
+- Limits are checked during execution and can overshoot; they are not precise wall-clock or billing guarantees.
+- Use bounded result samples for exploration. Exports may require streaming the full requested result rather than adding LIMIT.
+
+**Recovery:**
+
+On a timeout or memory error, inspect the cause and plan before retrying. Use an equivalent optimization, an explicitly agreed narrower scope, or a justified budget change within existing authorization. Do not silently narrow dates or increase limits. Stop repeated attempts that reproduce the same failure without new evidence.
+
+Production access should use appropriately constrained database users, settings profiles, and quotas so resource limits do not depend on the model remembering every setting. Changing those controls is a separate administrative action, not part of answering a query.
+
+Reference: [Query complexity restrictions](https://clickhouse.com/docs/operations/settings/query-complexity) · [Settings profiles](https://clickhouse.com/docs/operations/settings/settings-profiles) · [Quotas](https://clickhouse.com/docs/operations/quotas)
 
 ### 4.2 Connect AI Agents to ClickHouse
 
 **Impact: HIGH (Proper connection setup eliminates credential-prompting friction and enables structured access)**
 
-Two connection methods, each with a clear use case. Pick one based on your environment.
+Use an existing authorized MCP, CLI, or HTTP connection when live access is needed. Reuse configured credentials without displaying secrets. Offline review does not need a connection; configuring new integrations or enabling writes is only appropriate when the task calls for it.
 
-**Incorrect: prompting for credentials every time**
+**Incorrect (prompting for credentials every time):**
 
 ```python
 # Agent asks the user for host, port, user, password on every session
@@ -1706,7 +1523,7 @@ response = client.query("SELECT 1",
     host="???", user="???", password="???")  # fragile, unsecured
 ```
 
-**Correct: MCP or CLI with pre-configured credentials**
+**Correct (MCP or CLI with pre-configured credentials):**
 
 ```bash
 # MCP: credentials configured once via env vars or OAuth
@@ -1717,6 +1534,8 @@ clickhouse client --host abc123.clickhouse.cloud --port 9440 --secure \
   --user default --password "$CLICKHOUSE_PASSWORD" --format JSON \
   --query "SELECT 1"
 ```
+
+### Option A: MCP Server (interactive agent workflows)
 
 Best for schema discovery, iterative analysis, and multi-step conversations.
 
@@ -1735,20 +1554,36 @@ pip install mcp-clickhouse
 ```
 
 | Variable | Example | Notes |
-
 |----------|---------|-------|
-
 | `CLICKHOUSE_HOST` | `abc123.clickhouse.cloud` | Hostname |
-
 | `CLICKHOUSE_USER` | `default` | Database user |
-
 | `CLICKHOUSE_PASSWORD` | `your-password` | Database password |
-
 | `CLICKHOUSE_SECURE` | `true` | Always `true` for Cloud |
 
-Enable writes: `export CLICKHOUSE_ALLOW_WRITE_ACCESS=true`
+Keep read-only access for analysis. If a requested write requires enabling access, first verify that the user authorized that operation; a connection setup example is not permission to enable writes.
 
 **Limitations:**
+- For large result sets or batch operations, consider CLI/HTTP streaming and the available tool limits.
+- MCP's `list_tables` may not surface column `COMMENT` annotations — query `system.columns` directly for full schema context (see `agent-discovery-schema`).
+
+**ClickHouse Cloud note:** Services can be idle/sleeping. The first query after inactivity may take 10-20 seconds while the service wakes up. An initial timeout or `503` may indicate wake-up; a bounded retry of a read can be appropriate. Diagnose persistent errors rather than assuming wake-up.
+
+### Option B: clickhouse-client (batch operations, large results)
+
+Best for scripting, automation, and queries returning >10K rows. Choose based on the installed tools and output needs.
+
+```bash
+clickhouse client \
+  --host abc123.clickhouse.cloud --port 9440 --secure \
+  --user default --password "$CLICKHOUSE_PASSWORD" \
+  --format JSON \
+  --max_execution_time 30 \
+  --query "SELECT * FROM events LIMIT 100" 2>&1
+```
+
+### Option C: HTTP interface (fallback when CLI is unavailable)
+
+If you have credentials but can't install `clickhouse-client` (lambda, sandbox, web-based agent), use the HTTP interface directly:
 
 ```bash
 curl -s "https://abc123.clickhouse.cloud:8443/" \
@@ -1757,162 +1592,93 @@ curl -s "https://abc123.clickhouse.cloud:8443/" \
   --data-binary "SELECT name, engine FROM system.tables WHERE database = 'default' FORMAT JSON"
 ```
 
-- MCP has ~200-500ms overhead per call. For large result sets or batch operations, use CLI.
-
-- MCP's `list_tables` may not surface column `COMMENT` annotations — query `system.columns` directly for full schema context (see `agent-discovery-schema`).
-
-**ClickHouse Cloud note:** Services can be idle/sleeping. The first query after inactivity may take 10-20 seconds while the service wakes up. A timeout or `503` on first connection is expected — retry once before treating it as an error.
-
-Best for scripting, automation, and queries returning >10K rows. Zero per-call overhead.
-
-If you have credentials but can't install `clickhouse-client` (lambda, sandbox, web-based agent), use the HTTP interface directly:
-
 Port `8443` is HTTPS. Pass query settings as URL params: `?max_execution_time=30&max_result_rows=10000`.
 
+### Where to find connection credentials (ClickHouse Cloud)
+
 1. Go to [console.clickhouse.cloud](https://console.clickhouse.cloud)
-
 2. Click your service → **Connect** in the left sidebar
-
 3. The dialog shows hostname, port, user, and a pre-built CLI command
-
-4. **Reset password** if needed from the same dialog
+4. If credentials are unavailable, request the missing access. Resetting a password may affect other clients and requires specific authorization.
 
 For self-managed: check `config.xml` or ask your administrator.
 
-Always specify a format. The default (TabSeparated without headers) is unparseable by agents.
+### Output format selection
 
-| Format | Tokens (1K rows) | Best For |
+Select an explicit format that the consumer can parse. Headerless tab-separated output requires separate column context.
 
-|--------|------------------|----------|
-
-| `JSON` | ~20K | Single queries — includes column types, row count, statistics |
-
-| `JSONCompact` | ~10K | Same metadata as JSON but rows as arrays — good for wide tables |
-
-| `JSONEachRow` | ~15K | Streaming large results, piping through `jq` |
-
-| `TabSeparatedWithNames` | ~4K | Minimal tokens, simple tabular data |
+| Format | Best For |
+|--------|----------|
+| `JSON` | Column metadata, row count, and statistics |
+| `JSONCompact` | Similar metadata with rows as arrays |
+| `JSONEachRow` | Streaming and line-oriented consumers |
+| `TabSeparatedWithNames` | Compact tabular results with column names |
 
 Use `JSON` as the default for agent work. Switch to `TabSeparatedWithNames` when result sets are large and context window budget matters.
 
-Reference: [https://github.com/ClickHouse/mcp-clickhouse](https://github.com/ClickHouse/mcp-clickhouse), [https://clickhouse.com/docs/interfaces/cli](https://clickhouse.com/docs/interfaces/cli), [https://clickhouse.com/docs/interfaces/formats](https://clickhouse.com/docs/interfaces/formats)
+Reference: [ClickHouse MCP Server](https://github.com/ClickHouse/mcp-clickhouse) · [clickhouse-client](https://clickhouse.com/docs/interfaces/cli) · [Output Formats](https://clickhouse.com/docs/interfaces/formats)
 
-### 4.3 Discover Schema Before Querying
+### 4.3 Discover Relevant Schema Before Querying
 
-**Impact: CRITICAL (Skipping schema discovery leads to full scans, wrong columns, and wasted compute)**
+**Impact: CRITICAL (Use verified metadata to avoid wrong columns, misunderstood semantics, and unnecessary scans)**
 
-ALWAYS start by understanding the schema. Never assume table or column names. Agents that skip schema discovery write queries that scan unnecessary data, use wrong column names, or miss the sort key — all of which burn compute and return bad results.
+Use schema supplied by the user, reliable session evidence, or target-database metadata. Retrieve what is missing for the task; there is no mandatory discovery sequence. A question about supplied SQL need not establish a live connection, and a known table need not trigger a database-wide inventory.
 
-**Step 1: List databases**
-
-**Step 2: List tables with size context**
-
-This tells you which tables are large (and therefore expensive to scan carelessly) and what engine each uses.
-
-**Step 3: Get columns, types, and comments**
-
-**Column comments are critical.** If table creators have added `COMMENT` annotations to columns, they are invaluable for understanding semantics (e.g., distinguishing `user_id_hash` from `user_id`). MCP's `list_tables` tool returns column names and types but may not surface comments — always query `system.columns` directly when you need full context.
-
-**Step 4: Understand the sort key**
-
-This is the most important step for writing efficient queries. Filtering on sort key columns allows ClickHouse to skip entire data granules. Filtering on non-key columns forces a full scan.
-
-**Step 5: Check for skipping indexes**
-
-Skipping indexes (`bloom_filter`, `minmax`, `set`, `tokenbf_v1`) tell you which non-sort-key columns already have optimized filter paths. If an index exists on a column, filtering on it is efficient even though it's not in the sort key. Missing this step means you won't know which "non-key" filters are actually fast.
-
-**Step 6: Sample data**
-
-A small sample reveals actual data patterns — date ranges, enum values, null frequency — that inform how to write correct `WHERE` clauses.
-
-**Step 7: Verify query plan before execution**
-
-Before running a potentially expensive query, use `EXPLAIN` to verify it will use indexes efficiently:
-
-Look for:
-
-- **Keys** section showing your sort key columns are being used for filtering
-
-- **Parts** and **Granules** counts — if these are not significantly reduced from the total, your filters aren't pruning effectively
-
-- **Skip** entries showing data skipping index usage
-
-For a quick cost estimate without running the query:
-
-This returns estimated rows and bytes to be read — if the numbers look unreasonably large, refine your filters before executing.
-
-**Example full discovery workflow:**
+**Incorrect (guessing unknown columns):**
 
 ```sql
--- 1. What databases exist?
-SELECT name FROM system.databases
-WHERE name NOT IN ('system', 'information_schema', 'INFORMATION_SCHEMA');
+-- Assuming a timestamp column exists without checking the supplied schema
+SELECT timestamp FROM analytics.events LIMIT 5;
+```
 
--- 2. What's in the target database?
-SELECT name, engine, total_rows,
-       formatReadableSize(total_bytes) as size
-FROM system.tables
-WHERE database = 'analytics'
-ORDER BY total_bytes DESC;
+**Correct (inspect the relevant table when its schema is unknown):**
 
--- 3. What columns does the main table have? (comments reveal semantics)
+```sql
 SELECT name, type, comment
 FROM system.columns
 WHERE database = 'analytics' AND table = 'events'
 ORDER BY position;
 
--- 4. What's the sort key? (determines efficient filter columns)
-SELECT sorting_key, primary_key, partition_key
+SELECT engine, sorting_key, primary_key, partition_key
 FROM system.tables
-WHERE database = 'analytics' AND table = 'events';
+WHERE database = 'analytics' AND name = 'events';
+```
 
--- 5. What skipping indexes exist? (optimized non-key filters)
-SELECT name, type_full, expr, granularity
-FROM system.data_skipping_indices
-WHERE database = 'analytics' AND table = 'events';
+Comments help distinguish similarly named identifiers and units. Use SHOW CREATE TABLE when engine arguments, projections, defaults, or full DDL matter. Tools may already return this information; do not repeat equivalent calls.
 
--- 6. What does the data look like?
-SELECT * FROM analytics.events LIMIT 5;
+**Example (find a table when the target is unknown):**
 
--- 7. Verify the query plan before running
-EXPLAIN indexes = 1
-SELECT event_type, count()
-FROM analytics.events
-WHERE event_date >= '2024-01-01'
-  AND user_id = 'abc123'
-GROUP BY event_type;
-
--- 8. NOW execute the query with confidence:
-SELECT event_type, count()
-FROM analytics.events
-WHERE event_date >= '2024-01-01'  -- partition key filter
-  AND user_id = 'abc123'          -- sort key filter
-GROUP BY event_type
-ORDER BY count() DESC
+```sql
+SELECT database, name, engine, total_rows, total_bytes
+FROM system.tables
+WHERE database NOT IN ('system', 'information_schema', 'INFORMATION_SCHEMA')
+ORDER BY total_bytes DESC
 LIMIT 100;
 ```
 
-**Why each step matters:**
+**Example (inspect skipping indexes for a performance question):**
 
-| Step | Skipping It Causes |
+```sql
+SELECT name, type_full, expr, granularity
+FROM system.data_skipping_indices
+WHERE database = 'analytics' AND table = 'events';
+```
 
-|------|-------------------|
+An index's presence does not prove a filter is selective. Inspect its use and granules pruned with EXPLAIN. Use a small, bounded sample only when values are needed to resolve semantics; five rows cannot establish overall cardinality, date range, or null frequency.
 
-| List databases | Querying wrong or nonexistent database |
+**Example (inspect a potentially expensive query before executing):**
 
-| List tables | Missing the right table, querying the wrong one |
+```sql
+EXPLAIN indexes = 1
+SELECT event_type, count()
+FROM analytics.events
+WHERE event_date >= '2024-01-01' AND user_id = 'abc123'
+GROUP BY event_type;
+```
 
-| Get columns + comments | Wrong column names, misunderstood semantics |
+Adapt identifiers and literal types to the verified schema. Inspect parts and granules selected, primary-key conditions, skipping indexes, and projections. Later-key filters may still prune; non-key filters may benefit from other access paths. If the plan is expensive, propose an equivalent optimization or discuss a narrower question rather than silently changing the result scope.
 
-| Check sort key | Full table scans instead of index-pruned reads |
-
-| Check skip indexes | Missing optimized filter paths on non-key columns |
-
-| Sample data | Wrong assumptions about date ranges, nulls, enums |
-
-| Verify EXPLAIN | Expensive queries that could have been caught before execution |
-
-Reference: [https://clickhouse.com/docs/operations/system-tables](https://clickhouse.com/docs/operations/system-tables)
+Reference: [System Tables](https://clickhouse.com/docs/operations/system-tables) · [EXPLAIN](https://clickhouse.com/docs/sql-reference/statements/explain)
 
 ---
 

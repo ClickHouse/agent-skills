@@ -4,7 +4,7 @@
 > `PingResult = { success: true } | { success: false, error: Error }` —
 > it does **not** throw on connection failures.
 
-## Answer checklist
+## Decision points
 
 When answering "how do I health-check / readiness-probe ClickHouse?":
 
@@ -14,12 +14,7 @@ When answering "how do I health-check / readiness-probe ClickHouse?":
 - For a readiness probe / "can it serve traffic", recommend
   `client.ping({ select: true })` so credentials and the query layer are
   validated, not just the socket.
-- **Always contrast the two forms explicitly in your answer**, even when
-  you're recommending one: plain `client.ping()` hits `/ping` (TCP/HTTP
-  reachability only — does not validate credentials or query processing);
-  `client.ping({ select: true })` issues a lightweight `SELECT 1` (validates
-  auth and query path). Name both and say which to use for liveness vs
-  readiness.
+- Plain `client.ping()` checks reachability; `client.ping({ select: true })` exercises authentication and the query path. Choose according to the probe goal.
 - Recommend lowering `request_timeout` on the client used for probes so
   they fail fast instead of hanging on the default timeout — pick a value
   comparable to the probe interval (e.g., `1500`–`2000` ms for a

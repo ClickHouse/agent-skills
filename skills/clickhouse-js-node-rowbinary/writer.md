@@ -1,7 +1,7 @@
 # RowBinary writer (encode) for Node.js
 
 Encoding JS values into a `RowBinary` payload to send to ClickHouse. Read
-[SKILL.md](SKILL.md) first for the format gate ("is RowBinary even the right
+[SKILL.md](SKILL.md) first for the format-selection guidance ("is RowBinary even the right
 format?") and the principles that apply to **both** directions; this file covers
 what's specific to **writing**. Reading? See [reader.md](reader.md).
 
@@ -16,6 +16,8 @@ need. (Structurally this is the mirror of the decode side in
 [reader.md](reader.md), but you don't need the read side to write.)
 
 ## Writer guidance
+
+The specialization suggestions below apply to a requested or measured optimization pass. Ordinary integrations can use the existing writer APIs. Preserve framing and correctness when optimizing.
 
 On top of the shared principles in [SKILL.md](SKILL.md), the write path has its own:
 

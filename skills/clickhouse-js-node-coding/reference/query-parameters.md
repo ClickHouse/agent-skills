@@ -6,16 +6,12 @@
 > `Array`/`Tuple`/`Map` parameters fixed in `>= 1.13.0`. `BigInt` query
 > parameters `>= 1.15.0`.
 
-## Answer checklist
+## Decision points
 
 When the user passes user-controlled values into SQL:
 
 - Use ClickHouse `{name: Type}` placeholders and a `query_params` object.
-- **Your response must explicitly name template-literal / string
-  interpolation of user input as a SQL injection risk** — even when the
-  user only asked "how do I bind values" and did not mention security.
-  This is non-negotiable: the security framing is part of the right
-  answer, not an optional aside.
+- Interpolating user-controlled values into SQL creates a SQL injection risk; use typed parameters.
 - Do not suggest PostgreSQL/MySQL-style `$1`, `?`, or `:name` placeholders.
 - Pick the placeholder type to match the ClickHouse column type (`String`,
   `Date`, `DateTime`, `Nullable(T)`, etc.).

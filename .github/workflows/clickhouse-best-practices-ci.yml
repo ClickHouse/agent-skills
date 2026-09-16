@@ -30,6 +30,17 @@ jobs:
       - name: Validate rule structure
         run: bun run validate
 
+      - name: Install ClickHouse SQL parser
+        env:
+          CLICKHOUSE_VERSION: 25.8.24.21
+        run: |
+          curl --fail --location --retry 3 "https://github.com/ClickHouse/ClickHouse/releases/download/v${CLICKHOUSE_VERSION}-lts/clickhouse-common-static-${CLICKHOUSE_VERSION}-amd64.tgz" -o "$RUNNER_TEMP/clickhouse.tgz"
+          tar -xzf "$RUNNER_TEMP/clickhouse.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/clickhouse-common-static-${CLICKHOUSE_VERSION}/usr/bin" >> "$GITHUB_PATH"
+
+      - name: Test validators
+        run: bun run test
+
       - name: Validate SQL syntax
         run: bun run validate-sql
 

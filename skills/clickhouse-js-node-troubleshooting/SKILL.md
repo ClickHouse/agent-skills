@@ -1,53 +1,29 @@
 ---
 name: clickhouse-js-node-troubleshooting
-description: >
-  Troubleshoot and resolve common issues with the ClickHouse Node.js client
-  (@clickhouse/client). Use this skill whenever a user reports errors, unexpected
-  behavior, or configuration questions involving the Node.js client specifically —
-  including socket hang-up errors, Keep-Alive problems, stream handling issues, data
-  type mismatches, read-only user restrictions, proxy/TLS setup problems, or long-running
-  query timeouts. Trigger even when the user hasn't precisely named the issue; vague
-  symptoms like "my inserts keep failing" or "connection drops randomly" in a Node.js
-  context are strong signals to use this skill. Do NOT use for browser/Web client issues.
+description: Diagnose failures in @clickhouse/client on Node.js, including connection resets, result handling, types, authentication, TLS, and query formatting. Use for reported client symptoms; excludes browser/edge clients.
+metadata:
+  version: "0.2.0"
 ---
 
-# ClickHouse Node.js Client Troubleshooting
+# ClickHouse Node.js client troubleshooting
 
-Reference: https://clickhouse.com/docs/integrations/javascript
+Use observed errors, effective configuration, and installed client/Node/server versions to choose a diagnostic path. Reuse supplied evidence and inspect available package manifests before asking the user for versions. For incomplete evidence, distinguish a likely cause from a confirmed diagnosis.
 
-> **⚠️ Node.js runtime only.** This skill covers the `@clickhouse/client` package running in a **Node.js runtime** exclusively — including **Next.js Node runtime** API routes, React Server Components, Server Actions, and standard Node.js processes. Do **not** apply this skill to browser client components, Web Workers, **Next.js Edge runtime**, Cloudflare Workers, or any usage of `@clickhouse/client-web`. For browser/edge environments, the correct package is `@clickhouse/client-web`.
+Read the relevant reference rather than every troubleshooting topic. Apply the smallest supported fix and verify the original symptom. Do not broaden the task into a client rewrite, change database privileges, or disable certificate verification simply because an example mentions it. Avoid blindly retrying writes whose outcome is unknown.
 
----
+## Issue references
 
-## How to Use This Skill
+- [Unknown INSERT outcomes and safe recovery](reference/write-outcomes.md) — for failed writes, duplicate batches, or retry decisions; establish the outcome boundary before transport tuning.
+- [Socket Hang-Up / ECONNRESET](reference/socket-hangup.md)
+- [Data Type Mismatches](reference/data-types.md)
+- [Read-Only User Errors](reference/readonly-users.md)
+- [Proxy / Pathname URL Confusion](reference/proxy-pathname.md)
+- [TLS / Certificate Errors](reference/tls.md)
+- [Compression Not Working](reference/compression.md)
+- [Logging Not Showing Anything](reference/logging.md)
+- [Query Parameters Not Interpolated](reference/query-params.md)
+- [FORMAT Clause / `SHOW POLICIES` Errors](reference/query-format-clause.md)
 
-1. **Identify the issue** — match symptoms to the Issue Index below and read the corresponding reference file.
-2. **Lead with the diagnosis** — explain what's likely causing the issue before giving the fix.
-3. **Note version constraints** — flag if a fix requires a minimum client version and check it against what the user provided.
-4. **Ask only what's missing** — if the fix is version-dependent and you don't know their version, ask; otherwise help immediately.
+Version notes in the references help identify applicable fixes; check uncertain or changed behavior against the installed source and [official documentation](https://clickhouse.com/docs/integrations/javascript). For ordinary new client code, use the coding skill only if its guidance is needed.
 
----
-
-## Issue Index
-
-Identify the user's issue from the list below and read the corresponding reference file for detailed troubleshooting steps.
-
-| Issue                                      | Symptoms                                                                                                                                                                     | Reference file                     |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| **Socket Hang-Up / ECONNRESET**            | `socket hang up`, `ECONNRESET`, intermittent connection drops, long-running queries timing out                                                                               | `reference/socket-hangup.md`       |
-| **Data Type Mismatches**                   | Large integers returned as strings, decimal precision loss, Date/DateTime insertion failures, `CANNOT_PARSE_INPUT_ASSERTION_FAILED` inserting a UUID into a `UInt128` column | `reference/data-types.md`          |
-| **Read-Only User Errors**                  | Errors when using response compression with `readonly=1` users                                                                                                               | `reference/readonly-users.md`      |
-| **Proxy / Pathname URL Confusion**         | Wrong database selected, requests failing behind a proxy with a path prefix                                                                                                  | `reference/proxy-pathname.md`      |
-| **TLS / Certificate Errors**               | TLS handshake failures, certificate verification issues, mutual TLS setup                                                                                                    | `reference/tls.md`                 |
-| **Compression Not Working**                | GZIP compression not activating for requests or responses                                                                                                                    | `reference/compression.md`         |
-| **Logging Not Showing Anything**           | No log output, need custom logger integration                                                                                                                                | `reference/logging.md`             |
-| **Query Parameters Not Interpolated**      | Parameterized queries not working, SQL injection concerns                                                                                                                    | `reference/query-params.md`        |
-| **FORMAT Clause / `SHOW POLICIES` Errors** | Syntax error from a duplicate `FORMAT`, or `SHOW [ROW] POLICIES` failing even with a format provided                                                                         | `reference/query-format-clause.md` |
-
----
-
-## Still Stuck?
-
-- [JS client source + full examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples)
-- [ClickHouse JS client docs](https://clickhouse.com/docs/integrations/javascript)
-- [ClickHouse supported formats](https://clickhouse.com/docs/interfaces/formats)
+Report the cause supported by evidence, the fix or next diagnostic, and what was verified. A focused question does not require an exhaustive troubleshooting report.

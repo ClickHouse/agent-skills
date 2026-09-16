@@ -1,211 +1,59 @@
-# AGENTS.md
+# Working on ClickHouse agent skills
 
-This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, etc.) when working with code in this repository.
+This repository contains skills for ClickHouse, chDB, Node.js clients, Postgres operations and ClickStack ingestion. Edit the skill relevant to the task; the top-level README lists the available skills.
 
-## Repository Overview
+## Layout and sources
 
-A collection of skills for AI agents working with ClickHouse databases and chdb (in-process ClickHouse for Python). Skills are packaged instructions and guidelines that extend agent capabilities for database design, query optimization, operational best practices, and in-process data analytics.
+Each skill has a required `skills/<kebab-case-name>/SKILL.md`. Supporting files differ by purpose:
 
-## Repository Structure
+- `clickhouse-best-practices/rules/` contains source rules; `packages/clickhouse-best-practices-build/` generates that skill's `AGENTS.md`.
+- chDB and Node.js skills keep API details and examples in supporting Markdown files; the RowBinary skill also ships codec source and tests.
+- Workflow skills use `ref/` or `references/` for operational recipes. They do not need a rule compiler.
+- Some skills maintain `metadata.json` and a `README.md`; keep them consistent when present. Do not create duplicate documentation solely to fill a template.
+- `.claude-plugin/marketplace.json` lists the currently packaged plugins. The root `.claude-plugin/plugin.json` describes the best-practices plugin.
 
-```
-agent-skills/
-├── skills/
-│   ├── clickhouse-best-practices/   # ClickHouse optimization guidelines
-│   │   ├── SKILL.md                 # Skill definition (overview)
-│   │   ├── AGENTS.md                # Full compiled guide (generated)
-│   │   ├── metadata.json            # Version, organization, abstract
-│   │   ├── README.md                # Maintainer guide
-│   │   └── rules/                   # Individual rule files
-│   │       ├── _sections.md         # Section metadata
-│   │       ├── _template.md         # Template for new rules
-│   │       └── *.md                 # Rule files (e.g., query-use-prewhere.md)
-│   ├── chdb-datastore/              # chdb pandas-compatible DataStore API
-│   │   ├── SKILL.md                 # Skill definition and quick-start
-│   │   ├── metadata.json            # Version, organization, abstract
-│   │   ├── README.md                # Maintainer guide
-│   │   ├── references/              # API reference docs
-│   │   │   ├── api-reference.md     # DataStore method signatures
-│   │   │   └── connectors.md        # All data source connection methods
-│   │   ├── examples/
-│   │   │   └── examples.md          # Runnable examples
-│   │   └── scripts/
-│   │       └── verify_install.py    # Environment verification
-│   └── chdb-sql/                    # chdb SQL API
-│       ├── SKILL.md                 # Skill definition and quick-start
-│       ├── metadata.json            # Version, organization, abstract
-│       ├── README.md                # Maintainer guide
-│       ├── references/              # SQL reference docs
-│       │   ├── api-reference.md     # query/Session/connect signatures
-│       │   ├── table-functions.md   # ClickHouse table functions
-│       │   └── sql-functions.md     # Commonly used SQL functions
-│       ├── examples/
-│       │   └── examples.md          # Runnable examples
-│       └── scripts/
-│           └── verify_install.py    # Environment verification
-├── packages/
-│   └── clickhouse-best-practices-build/  # Build tooling
-│       ├── package.json             # Bun scripts
-│       ├── tsconfig.json            # TypeScript config
-│       └── src/
-│           ├── config.ts            # Path configuration
-│           ├── types.ts             # Type definitions
-│           ├── parser.ts            # Markdown parser
-│           ├── build.ts             # Build script
-│           ├── validate.ts          # Rule validator
-│           ├── validate-sql.ts      # SQL syntax validator
-│           └── check-links.ts       # Internal link checker
-└── .github/
-    └── workflows/
-        └── clickhouse-best-practices-ci.yml  # CI workflow
+Read a skill's own maintainer guidance before changing it. Preserve historical benchmark/eval reports as records; do not rewrite their results to match new guidance.
+
+## Authoring
+
+Use YAML frontmatter with a matching `name`, a specific `description`, the applicable `license`, and skill version under `metadata`. The description should identify the task and relevant technology; avoid catch-all triggers that turn a generic SQL, pandas or app question into an installation or migration.
+
+Keep `SKILL.md` focused on selection, task-specific constraints and links to supporting details. Aim below 500 lines, but judge context cost by what the agent actually reads, not line count alone. Link directly to relevant supporting files. Do not require every reference or the compiled guide for a narrow task.
+
+Preserve domain knowledge, API contracts, operational invariants and useful examples. Replace generic model coaching, fixed answer ceremonies and repeated absolute language with a clear outcome and conditions for applying the advice. Use stronger prescriptions where a real format, protocol or data constraint requires them.
+
+Use the user's available context and authorization. Skills should not require repeated questions, blanket command allowlists, new infrastructure or unrelated changes when the requested work does not need them. Operational examples should preserve existing resources and credentials on retries, and distinguish proposed actions from actions executed.
+
+Qualify workload- and version-dependent advice. Preserve query semantics: nulls, duplicates, ordering, precision and time windows are not expendable performance details. State the evidence behind performance claims; do not assign numeric speedups solely from an impact label.
+
+## Best-practices rules
+
+Use `rules/_template.md` and section prefixes from `rules/_sections.md`. Rules have `title`, `impact`, optional `impactDescription`, and `tags` frontmatter. Explain applicability and tradeoffs, include real SQL examples and link to official documentation. Use incorrect/correct labels when one example is wrong; use descriptive labels when comparing valid alternatives.
+
+Impact levels (`CRITICAL`, `HIGH`, `MEDIUM-HIGH`, `MEDIUM`, `LOW-MEDIUM`, `LOW`) prioritize likely consequences. Any quantitative benefit needs workload, version and measurement context; the label is not a benchmark.
+
+Edit rule sources, then regenerate `skills/clickhouse-best-practices/AGENTS.md`. Do not hand-edit that generated guide. Other `AGENTS.md` files may be maintained navigation or compiled documents; inspect their header rather than assuming the same build process.
+
+## Validation
+
+For best-practices changes, from `packages/clickhouse-best-practices-build/`:
+
+```bash
+bun install --frozen-lockfile
+bun run validate
+bun run test
+bun run validate-sql
+bun run check-links
+bun run build
+bunx tsc --noEmit
 ```
 
-## Creating a New Skill
+SQL validation requires a ClickHouse binary (`CLICKHOUSE_BINARY` or `clickhouse` on PATH). CI installs a pinned release. The validator uses `clickhouse format` on every SQL fence: it checks parsing without executing queries. It does not prove schema compatibility, result equivalence or performance. Confirm generated output is current and `git diff --check` is clean.
 
-### Directory Structure
+For other skills, validate frontmatter, versions, relative links, referenced/packaged assets and the examples affected by the change. Run relevant existing code tests when changing executable code. Use disposable infrastructure for integration tests; do not provision cloud services just to validate Markdown. Record what was actually tested and what remains unverified.
 
-```
-skills/
-  {skill-name}/           # kebab-case directory name
-    SKILL.md              # Required: skill definition
-    AGENTS.md             # Generated: full compiled guide
-    metadata.json         # Required: version, organization, abstract
-    README.md             # Required: maintainer guide
-    rules/                # Required: rule files
-      _sections.md        # Section metadata
-      _template.md        # Template for new rules
-      *.md                # Individual rules
-```
+A behavioral evaluation is separate from static validation. Any external eval harness should pin model, agent environment, skill revision and fixtures; compare no skill, baseline and candidate with realistic negative cases. The eval proposal lives under `docs/` when present and is not an implemented runner.
 
-### Naming Conventions
+## Review boundaries
 
-- **Skill directory**: `kebab-case` (e.g., `clickhouse-best-practices`)
-- **SKILL.md**: Always uppercase, always this exact filename
-- **Rule files**: `{section-prefix}-{descriptive-name}.md` (e.g., `query-use-prewhere.md`)
-- **Section prefixes**: Match the section IDs defined in `_sections.md`
-
-### SKILL.md Format
-
-```markdown
----
-name: {skill-name}
-description: {One sentence describing when to use this skill. Include trigger phrases.}
-license: MIT
-metadata:
-  author: {organization}
-  version: "{version}"
----
-
-# {Skill Title}
-
-{Brief description of what the skill does.}
-
-## When to Apply
-
-Reference these guidelines when:
-- {Use case 1}
-- {Use case 2}
-
-## Rule Categories by Priority
-
-| Priority | Category | Impact | Prefix |
-|----------|----------|--------|--------|
-| 1 | {Category} | {Impact} | `{prefix}-` |
-
-## Quick Reference
-
-{Brief overview of each category and key rules}
-
-## How to Use
-
-{Instructions on reading individual rule files}
-
-## Full Compiled Document
-
-For the complete guide with all rules expanded: `AGENTS.md`
-```
-
-### Rule File Format
-
-Use the template in `rules/_template.md`. Each rule file must have:
-
-1. **YAML frontmatter**:
-   ```yaml
-   ---
-   title: Rule Title
-   impact: CRITICAL | HIGH | MEDIUM-HIGH | MEDIUM | LOW-MEDIUM | LOW
-   impactDescription: Optional (e.g., "10-100× query speedup")
-   tags: skill, category, specific-tags
-   ---
-   ```
-
-2. **Rule structure**:
-   - Brief explanation of why it matters
-   - **Incorrect:** code example showing the anti-pattern
-   - **Correct:** code example showing the best practice
-   - Additional context, trade-offs, or when to apply
-   - Reference links (optional)
-
-### Best Practices for Context Efficiency
-
-Skills are loaded on-demand — only the skill name and description are loaded at startup. The full `SKILL.md` loads into context only when the agent decides the skill is relevant. To minimize context usage:
-
-- **Keep SKILL.md under 500 lines** — put detailed reference material in separate files
-- **Write specific descriptions** — helps the agent know exactly when to activate the skill
-- **Use progressive disclosure** — reference supporting files that get read only when needed
-- **Individual rule files** — allows agents to read only relevant rules on-demand
-- **File references work one level deep** — link directly from SKILL.md to supporting files
-
-### Build System Requirements
-
-Each skill should have a build package that:
-- Validates rule structure and content
-- Validates code examples (e.g., SQL syntax for database skills)
-- Checks internal links
-- Generates the compiled `AGENTS.md` file
-
-For ClickHouse Best Practices, the build system:
-- Uses Bun for fast execution
-- Downloads ClickHouse binary for real SQL validation
-- Parses markdown with YAML frontmatter
-- Generates table of contents and numbered sections
-- Supports version management
-
-### Development Workflow
-
-1. **Add a rule**: Create a new `.md` file in `rules/` following the template
-2. **Validate**: Run `bun run validate` to check structure
-3. **Validate code**: Run skill-specific validators (e.g., `bun run validate-sql`)
-4. **Check links**: Run `bun run check-links`
-5. **Build**: Run `bun run build` to generate `AGENTS.md`
-6. **Test**: Verify the generated documentation is correct
-
-### CI/CD Integration
-
-Set up GitHub Actions (or similar) to:
-1. Install dependencies
-2. Run all validation scripts
-3. Build documentation
-4. Upload artifacts
-
-See `.github/workflows/clickhouse-best-practices-ci.yml` for an example.
-
-## Contributing Guidelines
-
-- Keep rules focused and actionable
-- Use real code that can be executed (avoid pseudo-code)
-- Include performance metrics when possible
-- Reference official documentation where relevant
-- Test code examples before committing
-- Follow the existing style and structure
-
-## Impact Levels
-
-Choose the appropriate impact level for rules:
-
-- **CRITICAL**: 10× or more improvement, or prevents serious issues
-- **HIGH**: 2-10× improvement, or significantly impacts scalability
-- **MEDIUM-HIGH**: 25-100% improvement, or important for specific workloads
-- **MEDIUM**: 10-25% improvement, or helpful for maintainability
-- **LOW-MEDIUM**: 5-10% improvement, or nice-to-have optimizations
-- **LOW**: Minor improvements or edge cases
+Keep a skill change together with its required metadata, packaging and build updates. Separate shared maintenance guidance and eval proposals so reviewers can adopt them independently. Follow the user's requested commit boundaries and PR state. State concrete behavior changes and validation limits in the PR; do not claim model-quality improvements without eval results.

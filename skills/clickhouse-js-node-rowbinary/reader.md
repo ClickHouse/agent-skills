@@ -2,7 +2,7 @@
 
 Decoding a `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes`
 response from ClickHouse into JS values. Read [SKILL.md](SKILL.md) first for the
-format gate ("is RowBinary even the right format?") and the principles that
+scope and format-selection guidance and the principles that
 apply to **both** directions; this file covers the decisions and the per-type
 reference specific to **reading**. Writing? See [writer.md](writer.md).
 
@@ -16,18 +16,15 @@ a real performance fork.
   It is generally the best choice for large results, but slower per-row.
 
 - **Whole buffer in memory (faster, when it fits).** If you already hold the
-  entire response as one `Buffer`, the bounds check never fires — so you can drop
-  `advance()` entirely and read at a running offset in one monolithic loop.
-  This is 2-3x faster but introduces latency and unbounded memory use.
+  entire valid response as one `Buffer`, a specialized reader can reduce chunk-boundary checks. Whole-buffer availability does not prove valid framing: reject truncated or malformed input at the boundary rather than reading beyond it. Buffering adds latency and memory proportional to the response. Benchmark the trade-off.
 
-The exposed API is streaming by default and requires an optimisation pass.
+Use the streaming API directly unless measurements or the requested deliverable justify specialization.
 
 ## Second: row objects, or columnar (typed arrays)?
 
 The default output is one object per row (array-of-structs). For a **numeric,
 fixed-width result that the consumer reads column-wise**, decode instead into one
-typed array per column (struct-of-arrays) — it is **~4x faster and several times
-smaller** because it removes the per-row object, `Date`, and number-boxing
+typed array per column (struct-of-arrays) — it is **faster and smaller in the cited numeric benchmark** because it removes the per-row object, `Date`, and number-boxing
 allocations that dominate a numeric decode (the byte reads are already at memory
 bandwidth). Measured in `tests/iot.columnar.bench.ts`; rationale in
 `case-studies/wasm-vs-js.md`.
@@ -52,8 +49,7 @@ bandwidth). Measured in `tests/iot.columnar.bench.ts`; rationale in
 
 ## Third: are the column types known ahead of time?
 
-- **Known (the default).** Generate a straight-line reader specialized to those
-  types — everything below.
+- **Known.** Use the matching per-type APIs; generate a specialized reader when performance work calls for it.
 - **Only at runtime** (the schema varies, or you just want to decode an arbitrary
   `RowBinaryWithNamesAndTypes` stream). Call
   `compileRowBinaryWithNamesAndTypes(cursor)` (`src/readers/rowBinaryWithNamesAndTypes.ts`):

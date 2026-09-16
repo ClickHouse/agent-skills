@@ -11,7 +11,7 @@ The client can compress the outgoing request (insert) body and ask the server
 to compress the response (read) body. Both are configured under `compression`
 on `createClient`.
 
-## Answer checklist
+## Decision points
 
 When answering compression questions, include the relevant points:
 

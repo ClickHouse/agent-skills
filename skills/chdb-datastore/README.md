@@ -1,6 +1,6 @@
 # chdb DataStore
 
-Agent skill for using chdb's pandas-compatible DataStore API — a drop-in pandas replacement backed by ClickHouse.
+Agent skill for using chdb's pandas-compatible DataStore API — a lazy DataFrame API backed by ClickHouse; check compatibility and benchmark before migrating.
 
 ## Installation
 
@@ -13,6 +13,8 @@ npx skills add clickhouse/agent-skills
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Skill definition and quick-start guide |
+| `references/pandas-boundary.md` | Pandas migration boundaries, materialization and output preservation |
+| `references/quick-start.md` | Task-specific usage patterns |
 | `references/api-reference.md` | Full DataStore method signatures |
 | `references/connectors.md` | All 16+ data source connection methods |
 | `examples/examples.md` | 11 runnable examples with expected output |
@@ -21,8 +23,8 @@ npx skills add clickhouse/agent-skills
 ## Trigger Phrases
 
 This skill activates when you:
-- "Analyze this file with pandas"
-- "Speed up my pandas code"
+- "Analyze this file with chDB DataStore"
+- "Evaluate DataStore for my pandas workload"
 - "Query this MySQL/PostgreSQL/S3 table as a DataFrame"
 - "Join data from different sources"
 - "Use DataStore to..."

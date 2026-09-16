@@ -22,11 +22,10 @@ map (per `openapi-discovery.md`).
 From the gauges in `prometheus-scrape.md`:
 
 - **`CacheHitRatio` well below ~95%** on a workload that
-  should fit in cache → cache thrash, real signal on its own.
+  should fit in cache → possible cache pressure; compare with workload and incident timing.
 - **`ActiveConnections` near the pool ceiling** → client
   fan-out or stuck queries.
-- **All gauges healthy** → the system is fine; whatever's slow
-  is per-query, not system-wide. Move on to Step 2.
+- **All gauges healthy** → no issue visible in this snapshot; transient or unexposed system problems remain possible. Continue with pattern evidence.
 
 (Confirm Prom metric names against the live scrape; user-facing
 docs are at
@@ -40,8 +39,8 @@ step or Step 2 hints at write-congestion (see
 
 ## Step 2 — What does the slow query pattern shape look like?
 
-Read the top 3 patterns by `<total_duration>` **after
-filtering out CH Cloud internal probes** (see
+Read the patterns relevant to aggregate duration, tail latency, or errors **after
+identifying likely CH Cloud internal probes** (see
 `slow-query-patterns-fields.md` → "Expect ClickHouse Cloud
 internal probes"). For each, look
 at the relationship between `<call_count>`, `<avg_duration>`,

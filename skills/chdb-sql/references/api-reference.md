@@ -1,14 +1,11 @@
 # chdb SQL API Reference
 
-> Complete signatures for the SQL-oriented chdb APIs.
+> Stateful, integration, and advanced SQL-oriented chdb APIs.
 
 ## Table of Contents
 
-- [chdb.query()](#chdbquery)
 - [Session](#session)
 - [Connection (DB-API 2.0)](#connection-db-api-20)
-- [Output Formats](#output-formats)
-- [Parametrized Queries](#parametrized-queries)
 - [Streaming Queries](#streaming-queries)
 - [Progress Callback](#progress-callback)
 - [User-Defined Functions (UDF)](#user-defined-functions-udf)
@@ -16,41 +13,7 @@
 
 ---
 
-## chdb.query()
-
-```python
-chdb.query(sql, output_format="CSV", path="", udf_path="", params=None)
-```
-
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sql` | str | _(required)_ | ClickHouse SQL query |
-| `output_format` | str | `"CSV"` | Output format (see [Output Formats](#output-formats)) |
-| `path` | str | `""` | Database path (empty = in-memory, no state) |
-| `udf_path` | str | `""` | Path for UDF scripts |
-| `params` | dict | `None` | Named parameters (see [Parametrized Queries](#parametrized-queries)) |
-
-**Returns:** Result object with:
-
-| Property/Method | Description |
-|-----------------|-------------|
-| `.show()` | Print result to stdout |
-| `.bytes()` | Raw bytes of the result |
-| `.data()` | Result as string |
-| `.rows_read` | Number of rows read |
-| `.bytes_read` | Number of bytes read |
-| `.elapsed` | Query execution time in seconds |
-
-```python
-import chdb
-
-result = chdb.query("SELECT 1 + 1 AS answer")
-result.show()       # prints: 2
-print(result.data())  # "2\n"
-
-df = chdb.query("SELECT * FROM numbers(10)", "DataFrame")
-print(df)  # pandas DataFrame
-```
+Independent local `chdb.query()` signatures, result access, output formats, typed parameters, and file reading are in [local-query.md](local-query.md).
 
 ---
 
@@ -120,54 +83,6 @@ print(cur.fetchall())
 cur.close()
 conn.close()
 ```
-
----
-
-## Output Formats
-
-| Format | Description | Use case |
-|--------|-------------|----------|
-| `"CSV"` | Comma-separated (default) | General export |
-| `"CSVWithNames"` | CSV with header row | Spreadsheet import |
-| `"JSON"` | JSON object with metadata | API responses |
-| `"JSONEachRow"` | One JSON object per line | Streaming / NDJSON |
-| `"DataFrame"` | pandas DataFrame | Python analysis |
-| `"Arrow"` | Apache Arrow bytes | IPC format |
-| `"ArrowTable"` | pyarrow.Table | Arrow ecosystem |
-| `"Parquet"` | Parquet bytes | File export |
-| `"Pretty"` | Formatted table | Terminal display |
-| `"PrettyCompact"` | Compact table | Terminal display |
-| `"TabSeparated"` | TSV | Tab-delimited export |
-| `"Debug"` | Debug info | Troubleshooting |
-
-```python
-import chdb
-
-chdb.query("SELECT 1", "Pretty").show()            # formatted table
-df = chdb.query("SELECT * FROM numbers(5)", "DataFrame")  # pandas DataFrame
-arrow = chdb.query("SELECT 1", "ArrowTable")        # pyarrow Table
-```
-
----
-
-## Parametrized Queries
-
-Use `{name:Type}` placeholders in SQL, and pass values via `params`:
-
-```python
-import chdb
-
-result = chdb.query(
-    """
-    SELECT toDate({start:String}) + number AS date, rand() % 1000 AS value
-    FROM numbers({days:UInt64})
-    """,
-    "DataFrame",
-    params={"start": "2025-01-01", "days": 30})
-print(result)
-```
-
-Supported types: `String`, `UInt8`–`UInt64`, `Int8`–`Int64`, `Float32`, `Float64`, `Date`, `DateTime`.
 
 ---
 

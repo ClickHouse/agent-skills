@@ -9,7 +9,7 @@ tags: [schema, data-types, Nullable, DEFAULT]
 
 **Impact: HIGH**
 
-Nullable columns maintain a separate UInt8 column for tracking null values, increasing storage and degrading performance. Use DEFAULT values instead when feasible.
+Nullable columns maintain a separate UInt8 column for tracking null values, increasing storage and degrading performance. Use DEFAULT values only when they preserve the domain meaning. Unknown values must not silently become real values such as age zero or the current timestamp.
 
 **Incorrect (Nullable everywhere):**
 
@@ -17,9 +17,9 @@ Nullable columns maintain a separate UInt8 column for tracking null values, incr
 CREATE TABLE users (
     id Nullable(UInt64),              -- IDs should never be null
     name Nullable(String),            -- Empty string is fine
-    age Nullable(UInt8),              -- 0 is a valid default
+    age Nullable(UInt8),              -- Keep nullable if unknown differs from age zero
     login_count Nullable(UInt32)      -- 0 is a valid default
-)
+) ENGINE = Memory;
 ```
 
 **Correct (DEFAULT values, Nullable only when semantic):**
@@ -28,11 +28,11 @@ CREATE TABLE users (
 CREATE TABLE users (
     id UInt64,                                    -- Never null
     name String DEFAULT '',                       -- Empty = unknown
-    age UInt8 DEFAULT 0,                          -- 0 = unknown
+    age Nullable(UInt8),                          -- Unknown differs from age zero
     login_count UInt32 DEFAULT 0,                 -- 0 = never logged in
     deleted_at Nullable(DateTime),                -- NULL = not deleted (semantic!)
     parent_id Nullable(UInt64)                    -- NULL = no parent (semantic!)
-)
+) ENGINE = Memory;
 ```
 
 **When Nullable IS appropriate:**
@@ -49,7 +49,7 @@ CREATE TABLE users (
 |------|---------|
 | String | `''` (empty string) |
 | UInt*/Int* | `0` |
-| DateTime | `now()` or `toDateTime(0)` |
-| UUID | `generateUUIDv4()` |
+| DateTime | A domain-approved default; retain NULL for unknown timestamps |
+| UUID | Generate only for a new identity; retain NULL for an unknown identity |
 
 Reference: [Select Data Types](https://clickhouse.com/docs/best-practices/select-data-types)

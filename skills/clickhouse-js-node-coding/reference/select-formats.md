@@ -6,7 +6,7 @@
 
 ## Default choice: `JSONEachRow` → `.json<T>()`
 
-Right answer for ~90% of selects when the result fits in memory.
+A useful default for row-oriented results that fit in memory.
 
 ```ts
 import { createClient } from "@clickhouse/client";
@@ -33,6 +33,32 @@ when `output_format_json_quote_64bit_integers=1`, to avoid JS precision
 loss. If that setting is `0`, they may be returned as unquoted JSON
 numbers instead. Note that in ClickHouse `>= 25.8`, this setting can
 default to `0`; see the troubleshooting skill for ways to control that.
+
+## Exact numeric reports
+
+Exactness has two boundaries: the SQL calculation and the value delivered to
+JavaScript. Quoting a result or converting it to `BigInt` cannot repair an
+intermediate expression or aggregate that already overflowed in ClickHouse.
+
+Choose SQL types from the required signedness, decimal scale and bounds of
+intermediates and totals, rather than only the stored column type. For bounded
+integer totals that can exceed Int64, widen the **input** to the aggregate,
+for example `sum(toInt128(amount_units))`. Casting `sum(amount_units)` afterward
+is too late. Likewise, widen operands before multiplication, such as
+`toInt128(quantity) * toInt128(unit_units)`, before summing the products.
+Int128 is one option when the required bounds fit; preserve an appropriate
+Decimal precision and scale for fractional values instead of casting them to
+integers.
+
+Return large exact values as strings, for example with `toString(...)` in the
+final projection, or a suitable explicit JSON quoting policy. Keep them as
+strings in JSON-facing APIs; if application arithmetic needs `BigInt`, parse
+the exact integer string and serialize it back to a string. Convert to JavaScript
+`number` only when the required value range is safely representable. Preserve
+the output types requested by the caller.
+
+See [arithmetic result types and overflow](https://clickhouse.com/docs/reference/functions/regular-functions/arithmetic-functions)
+and [`sum`](https://clickhouse.com/docs/reference/functions/aggregate-functions/sum).
 
 ## Single-document `JSON` format with metadata
 

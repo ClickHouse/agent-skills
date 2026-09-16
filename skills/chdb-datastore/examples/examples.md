@@ -34,7 +34,7 @@ df = pd.DataStore({"name": ["Alice", "Bob", "Carol", "Dave"],
                    "dept": ["Eng", "Sales", "Eng", "Sales"],
                    "salary": [95000, 72000, 110000, 68000]})
 
-# Same pandas API — everything works
+# Compare results with pandas for the operations and version in use
 result = (df[df["salary"] > 70000]
     .groupby("dept")
     .agg({"salary": ["mean", "count"]})

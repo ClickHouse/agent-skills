@@ -33,7 +33,7 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 
 ### ClickHouse Best Practices
 
-**28 rules** covering schema design, query optimization, and data ingestion—prioritized by impact.
+**31 rules** covering schema design, query optimization, data ingestion and database exploration, prioritized by impact.
 
 | Category | Rules | Impact |
 |----------|-------|--------|
@@ -45,15 +45,17 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 | Partitioning Strategy | 4 | HIGH |
 | Skipping Indices | 1 | HIGH |
 | Materialized Views | 2 | HIGH |
-| Async Inserts | 2 | HIGH |
+| Async Inserts | 1 | HIGH |
+| Insert Format | 1 | HIGH |
 | OPTIMIZE Avoidance | 1 | HIGH |
 | JSON Usage | 1 | MEDIUM |
+| Agent Database Exploration | 3 | CRITICAL / HIGH |
 
 **Location:** [`skills/clickhouse-best-practices/`](./skills/clickhouse-best-practices/)
 
 **For humans:** Read [SKILL.md](./skills/clickhouse-best-practices/SKILL.md) for an overview, or [AGENTS.md](./skills/clickhouse-best-practices/AGENTS.md) for the complete compiled guide.
 
-**For agents:** The skill activates automatically when you work with ClickHouse—creating tables, writing queries, or designing data pipelines.
+**For agents:** Use for ClickHouse schema, query-performance, ingestion and database exploration tasks. Read only the rules relevant to the requested work.
 
 ### ClickHouse Architecture Advisor
 
@@ -67,13 +69,25 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 | Time-Series Partitioning | HIGH |
 | Real-Time Pre-Aggregation | HIGH |
 
-Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* — not just *what*. All recommendations are explicitly classified as `official`, `derived`, or `field` guidance.
+Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* — not just *what*. Recommendations distinguish official documentation, workload-specific inference, and field heuristics; structured reviews can use explicit provenance labels.
 
 **Location:** [`skills/clickhouse-architecture-advisor/`](./skills/clickhouse-architecture-advisor/)
 
-**For humans:** Read [SKILL.md](./skills/clickhouse-architecture-advisor/SKILL.md) for an overview, or [AGENTS.md](./skills/clickhouse-architecture-advisor/AGENTS.md) for the compiled guide.
+**For humans:** Read [SKILL.md](./skills/clickhouse-architecture-advisor/SKILL.md) for an overview, or [AGENTS.md](./skills/clickhouse-architecture-advisor/AGENTS.md) for reference navigation.
 
 **For agents:** The skill activates during architecture design sessions — when choosing ingestion patterns, designing time-series schemas, selecting enrichment strategies, or handling mutable state.
+
+### ClickHouse JS Node Coding
+
+API guidance for `@clickhouse/client` on Node.js: configuration, typed query parameters, result handling, insertion, compression and request settings. Use the APIs supported by the installed client version.
+
+**Location:** [`skills/clickhouse-js-node-coding/`](./skills/clickhouse-js-node-coding/)
+
+### ClickHouse JS Node RowBinary
+
+Read and write ClickHouse RowBinary formats in Node.js. Includes codec source, wire-format constraints and targeted optimization guidance; format comparisons are available when choosing a format is part of the task.
+
+**Location:** [`skills/clickhouse-js-node-rowbinary/`](./skills/clickhouse-js-node-rowbinary/)
 
 ### ClickHouse JS Node Troubleshooting
 
@@ -85,39 +99,45 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* �
 
 ### chdb DataStore
 
-**Pandas-compatible API** for chdb — drop-in pandas replacement backed by ClickHouse. Write `import chdb.datastore as pd` and use the same pandas API, 10-100x faster. Supports 16+ data sources (MySQL, PostgreSQL, S3, MongoDB, Iceberg, Delta Lake, etc.) with cross-source joins.
+**Pandas-compatible API** for chdb — lazy DataFrame operations backed by ClickHouse, with readers for local and remote sources. Evaluate result compatibility and performance on representative workloads before migrating pandas code.
 
 **Location:** [`skills/chdb-datastore/`](./skills/chdb-datastore/)
 
-**For agents:** The skill activates when you analyze data with pandas-style syntax, speed up slow pandas code, query remote databases as DataFrames, or join data across different sources.
+**For agents:** Use when the project already uses chDB DataStore or the user wants to evaluate it for pandas-style analysis and cross-source queries.
 
 ### chdb SQL
 
-**In-process ClickHouse SQL** for Python — run SQL queries on local files, remote databases, and cloud storage without a server. Covers `chdb.query()`, Session, DB-API 2.0, parametrized queries, UDFs, streaming, and all ClickHouse table functions.
+**In-process ClickHouse SQL** for Python — run SQL queries on local files, remote databases, and cloud storage without a server. Covers `chdb.query()`, Session, DB-API 2.0, parametrized queries, UDFs, streaming, and common source table functions.
 
 **Location:** [`skills/chdb-sql/`](./skills/chdb-sql/)
 
-**For agents:** The skill activates when you write SQL queries against files, use ClickHouse table functions, build stateful analytical pipelines, or use advanced ClickHouse SQL features.
+**For agents:** Use for an existing chDB project or a requested chDB SQL analysis, including sessions and DB-API integrations.
+
+### ClickHouse Managed Postgres RCA
+
+Investigate ClickHouse-managed Postgres performance using Prometheus metrics and Slow Query Patterns API evidence. Produces recommendations tied to the incident window, with uncertainty stated where evidence is incomplete.
+
+**Location:** [`skills/clickhouse-managed-postgres-rca/`](./skills/clickhouse-managed-postgres-rca/)
 
 ### Infra ClickHouse
 
-**Local and cloud workflows** for running ClickHouse with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-clickhouse/ref/local.md) for local development (install ClickHouse, start a server, create schemas, seed data) and [`ref/cloud.md`](./skills/infra-clickhouse/ref/cloud.md) for ClickHouse Cloud (authenticate, create a service, migrate schemas, connect an application). The local workflow hands off to cloud when going to production. Supersedes `clickhousectl-local-dev` and `clickhousectl-cloud-deploy`.
+**Local and cloud workflows** for running ClickHouse with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-clickhouse/ref/local.md) for local development (install ClickHouse, start a server, create schemas, seed data) and [`ref/cloud.md`](./skills/infra-clickhouse/ref/cloud.md) for ClickHouse Cloud (authenticate, create a service, migrate schemas, connect an application). Use the cloud workflow when ClickHouse Cloud is the selected deployment target. Supersedes `clickhousectl-local-dev` and `clickhousectl-cloud-deploy`.
 
 **Location:** [`skills/infra-clickhouse/`](./skills/infra-clickhouse/)
 
-**For agents:** The skill activates when a user wants to build an application with ClickHouse, set up a local development environment, deploy to production, or manage a ClickHouse Cloud service.
+**For agents:** Use for requested local ClickHouse setup or ClickHouse Cloud operations with `clickhousectl`; reuse existing infrastructure when present.
 
 ### Infra Postgres
 
-**Local and cloud workflows** for running Postgres with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-postgres/ref/local.md) for local Docker-backed Postgres development (start, psql client, `.env` wiring, lifecycle) and [`ref/cloud.md`](./skills/infra-postgres/ref/cloud.md) for managed ClickHouse Cloud Postgres services (beta) — authentication, service creation, connections and TLS, runtime configuration, read replicas, failover, and point-in-time restore. The local workflow hands off to cloud when going to production.
+**Local and cloud workflows** for running Postgres with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-postgres/ref/local.md) for local Docker-backed Postgres development (start, psql client, `.env` wiring, lifecycle) and [`ref/cloud.md`](./skills/infra-postgres/ref/cloud.md) for managed ClickHouse Cloud Postgres services (beta) — authentication, service creation, connections and TLS, runtime configuration, read replicas, failover, and point-in-time restore. Use the cloud workflow when ClickHouse Cloud is the selected deployment target.
 
 **Location:** [`skills/infra-postgres/`](./skills/infra-postgres/)
 
-**For agents:** The skill activates when a user wants to set up a local Postgres for development, connect an application to Postgres, or create and manage a managed Postgres service in ClickHouse Cloud.
+**For agents:** Use for local Docker-backed Postgres or ClickHouse Cloud Postgres operations with `clickhousectl`. Preserve the selected provider and existing credentials.
 
 ### ClickStack OTel Collector
 
-**Step-by-step workflow** for wiring an OpenTelemetry collector into a Managed ClickStack service on ClickHouse Cloud. Covers deploying a new local collector (Docker run or Docker Compose) or configuring an existing collector, creating a dedicated ingest SQL user, sending rich synthetic telemetry, and verifying the data is visible in ClickStack.
+**Step-by-step workflow** for wiring an OpenTelemetry collector into a Managed ClickStack service on ClickHouse Cloud. Covers deploying a new local collector (Docker run or Docker Compose) or configuring an existing collector, provisioning an ingest SQL user when needed, optional synthetic telemetry, and evidence-based ingestion/UI verification.
 
 **Location:** [`skills/clickstack-otel-collector/`](./skills/clickstack-otel-collector/)
 
@@ -146,11 +166,11 @@ Example prompts:
 
 The agent will apply relevant ClickHouse best practices rules.
 
-> "Load this Parquet file and group by country, show top 10 by revenue"
+> "Use chDB to load this Parquet file and group by country, showing top 10 by revenue"
 
 The agent will use chdb DataStore or SQL to query the file directly.
 
-> "Join my MySQL customers table with this local orders.parquet file"
+> "Use chDB to join my MySQL customers table with this local orders.parquet file"
 
 The agent will use chdb's cross-source join capabilities.
 

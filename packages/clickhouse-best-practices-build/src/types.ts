@@ -24,6 +24,7 @@ export interface Rule {
   impact: ImpactLevel
   impactDescription?: string // e.g., "2-10× improvement"
   explanation: string
+  body: string // Original Markdown after the title/impact, preserved by the compiler
   examples: CodeExample[]
   references?: string[] // URLs or citations
   tags?: string[] // For categorization/search

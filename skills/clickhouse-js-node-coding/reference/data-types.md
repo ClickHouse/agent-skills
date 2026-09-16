@@ -12,7 +12,7 @@
 > - `QBit`: ClickHouse `>= 25.10` (experimental, gated by
 >   `allow_experimental_qbit_type`); GA on `26.x`.
 
-## Answer checklist
+## Decision points
 
 When answering about storing and reading JSON objects:
 

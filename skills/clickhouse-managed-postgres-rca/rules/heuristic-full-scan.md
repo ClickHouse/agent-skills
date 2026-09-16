@@ -26,8 +26,7 @@ For the candidate pattern:
       (<blocks_served_from_cache> + <blocks_read_from_disk>)
       / max(<total_rows>, 1)
 
-A ratio in the hundreds or thousands per row returned is the
-full-scan signature even without a plan.
+A high ratio suggests substantial work per returned row. It does not establish a sequential scan: aggregates, joins, and legitimate broad queries can also return few rows after touching many blocks. Confirm with a plan and workload context.
 
 **Use blocks _touched_ (hit + read), not just disk reads.** A
 hot table fully cached still produces a high
@@ -40,7 +39,7 @@ response.
 
 ## What it cannot distinguish
 
-Two causes look identical on this surface:
+Possible explanations that need plan evidence include:
 
 1. **Missing index** on the predicate / sort column(s).
 2. **Existing index ignored** by the planner — stale stats, a
@@ -62,9 +61,7 @@ CREATE INDEX CONCURRENTLY <descriptive_name>
 
 Rules of thumb:
 
-- **`CONCURRENTLY`, always.** Never block writes on a running
-  instance. Note in the recommendation that this takes longer
-  but doesn't lock.
+- **Consider `CONCURRENTLY` for a live write-serving table.** It avoids blocking normal writes but still has locks, waits, and operational constraints; it cannot run inside a transaction block.
 - **Include the ORDER BY column.** If the query's `ORDER BY`
   matches, put it in the index in the right direction so the
   index can serve the sort.
@@ -74,8 +71,7 @@ Rules of thumb:
 
 If the user reports a covering index already exists:
 
-1. `EXPLAIN (ANALYZE, BUFFERS) <the slow query>` — confirm
-   the planner is or isn't using the index.
+1. Inspect plain EXPLAIN first. EXPLAIN (ANALYZE, BUFFERS) executes the query and needs an appropriate environment and execution budget; take particular care with writes.
 2. If it isn't, check for: function on indexed column, type
    mismatch in the predicate, stale stats (`ANALYZE` the
    table), or a bad cost estimate.

@@ -1,9 +1,9 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "organization": "ClickHouse Inc",
-  "date": "April 2026",
+  "date": "September 2026",
   "clickhouseVersion": "24.1+",
-  "abstract": "Architecture decision skill for ClickHouse workloads. Complements clickhouse-best-practices with workload-aware decision frameworks for real-time ingestion, time-series partitioning, enrichment joins, upsert patterns, and pre-aggregation. Recommendations are explicitly labeled as official, derived, or field guidance.",
+  "abstract": "Compare ClickHouse architecture options for a specific workload, including ingestion, enrichment, mutable state, partitioning, and pre-aggregation. Use for system-design decisions and architecture reviews.",
   "references": [
     "https://clickhouse.com/docs/best-practices",
     "https://clickhouse.com/docs/en/operations/settings/settings#async_insert",

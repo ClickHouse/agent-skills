@@ -1,123 +1,35 @@
 ---
 name: clickhouse-architecture-advisor
-description: MUST USE when designing ClickHouse architectures, selecting between ingestion or modeling patterns, or translating best practices into workload-specific system designs. Complements clickhouse-best-practices with decision frameworks and explicit provenance labels.
+description: Compare ClickHouse architecture options for a specific workload, including ingestion, enrichment, mutable state, partitioning, and pre-aggregation. Use for system-design decisions and architecture reviews.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # ClickHouse Architecture Advisor
 
-This skill adds workload-aware architecture decisioning on top of `clickhouse-best-practices`.
+Choose architecture options from the workload's throughput, latency/freshness goals, query patterns, update semantics, and operating constraints. Reuse provided context; ask only for missing information that materially changes the decision, or state a reasonable assumption for a provisional recommendation.
 
-> **Official docs remain the source of truth.**
-> This skill must always prefer official ClickHouse documentation when available.
+## Evidence and scope
 
-## Required behavior
+Distinguish documented capabilities (`official`), workload-specific inferences (`derived`), and experience-based heuristics (`field`). Cite the supporting official source and explain material assumptions. A heuristic is not official policy; do not invent field experience or measurements. Explicit category labels are useful in structured reviews, but ordinary answers can explain the distinction in prose.
 
-Before producing recommendations:
+Read relevant decision files and verify version-sensitive features against current official documentation or the target deployment. An architecture assessment does not authorize provisioning or data changes. Preserve the user's chosen deployment and scope unless they ask to compare alternatives.
 
-1. Identify the workload shape
-   - observability
-   - security / SIEM
-   - product analytics
-   - IoT / telemetry
-   - market data / financial services
-   - mixed OLAP with point-lookups
-2. Read the relevant decision rule files in `rules/`
-3. Use `mappings/doc_links.yaml` to attach official documentation
-4. Classify every recommendation as:
-   - `official`
-   - `derived`
-   - `field`
-5. Never present field guidance as official guidance
-6. If a recommendation is uncertain, say so explicitly
+## Decision references
 
-## Provenance rules
+- [Ingestion](rules/decision-ingestion-strategy.md): batching, asynchronous inserts, queues, and replay requirements.
+- [Partitioning](rules/decision-partitioning-timeseries.md): retention, volume, and part growth.
+- [Enrichment](rules/decision-join-enrichment.md): JOINs, dictionaries, denormalization, and refresh behavior.
+- [Mutable state](rules/decision-late-arriving-upserts.md): late events, row identity, replacement, and collapse semantics.
+- [Pre-aggregation](rules/decision-real-time-preaggregation.md): freshness, incremental maintenance, and recomputation.
+- [Official source map](mappings/doc_links.yaml): links by decision area.
 
-### `official`
-Use this when the recommendation is directly backed by official docs.
+Use concrete best-practices rules when a schema or query detail needs them; reading another entire skill is not a prerequisite.
 
-### `derived`
-Use this when the recommendation is not stated verbatim in docs but follows logically from documented ClickHouse behavior.
+## Deliverable
 
-### `field`
-Use this only for experience-based guidance that may be situational.
-When using `field`, include:
-- a disclaimer that the advice is heuristic
-- a relevant official doc if one partially applies
-- the reason the advice depends on workload context
+Lead with the recommended option and the trade-off that decides it. Provide enough evidence and a validation approach to make the decision testable. Include DDL or a full target architecture only when it helps the requested decision.
 
-## Read these rule files by scenario
-
-### Real-time ingestion design
-1. `rules/decision-ingestion-strategy.md`
-2. `rules/decision-real-time-preaggregation.md`
-3. Relevant best-practices insert rules
-
-### Time-series and retention design
-1. `rules/decision-partitioning-timeseries.md`
-2. Relevant best-practices schema partition rules
-
-### Enrichment and dimension lookups
-1. `rules/decision-join-enrichment.md`
-2. Relevant best-practices query join rules
-
-### Mutable state / late-arriving events
-1. `rules/decision-late-arriving-upserts.md`
-2. Relevant best-practices mutation avoidance rules
-
-## Output format
-
-Structure responses like this:
-
-```markdown
-## Workload Summary
-- workload:
-- latency target:
-- data shape:
-- primary query patterns:
-- operational constraints:
-
-## Key Decisions
-- ...
-- ...
-
-## Recommendations
-
-### <Recommendation title>
-
-**What**
-...
-
-**Why**
-...
-
-**How**
-...
-
-**Category**
-official | derived | field
-
-**Confidence**
-high | medium | heuristic
-
-**Source**
-- doc link(s)
-
-**Validation**
-- concrete SQL, metric, or smoke test
-```
-
-## Architecture-specific guidance
-
-Prefer decision frameworks over generic advice. Good responses should:
-- explain tradeoffs
-- identify the likely operating bottleneck
-- separate immediate actions from structural redesign
-- provide target architecture patterns, not just isolated settings
-
-## Full reference
-
-See `AGENTS.md` for the compiled version and `examples/` for sample outputs.
+For comprehensive reviews, see the optional [response example](examples/review-format.md). The [recommendation schema](schemas/recommendation_schema.yaml) is available when structured output is requested. [Scenario examples](examples/README.md) illustrate applications rather than fixed designs to copy.

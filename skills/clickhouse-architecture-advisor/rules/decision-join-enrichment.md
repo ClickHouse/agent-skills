@@ -51,6 +51,10 @@ Precomputed enrichment is often better than expensive runtime joins for recurrin
 - https://clickhouse.com/docs/materialized-view/incremental-materialized-view
 - https://clickhouse.com/docs/materialized-view/refreshable-materialized-view
 
+## Semantic constraints
+
+Dictionaries collapse duplicate keys; use them only when one value per key matches the requested semantics. Denormalized or incremental enrichment does not automatically track later dimension changes. Choose refresh/recomputation when current dimension values are required.
+
 ## Validation
 
 - Identify top CPU-consuming JOIN patterns
