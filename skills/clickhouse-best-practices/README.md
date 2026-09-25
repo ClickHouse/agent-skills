@@ -10,7 +10,7 @@ npx skills add ClickHouse/clickhouse-agent-skills
 
 ## What's Included
 
-**31 atomic rules** organized by prefix:
+**32 atomic rules** organized by prefix:
 
 | Prefix | Count | Coverage |
 |--------|-------|----------|
@@ -21,6 +21,7 @@ npx skills add ClickHouse/clickhouse-agent-skills
 | `query-join-*` | 5 | JOIN algorithms, filtering, alternatives |
 | `query-index-*` | 1 | Data skipping indices |
 | `query-mv-*` | 2 | Incremental and refreshable MVs |
+| `query-dedup-*` | 1 | ReplacingMergeTree reads (FINAL, argMax, LIMIT BY), soft-delete handling |
 | `insert-batch-*` | 1 | Batch sizing (10K-100K rows) |
 | `insert-async-*` | 2 | Async inserts, data formats |
 | `insert-mutation-*` | 2 | Mutation avoidance |
