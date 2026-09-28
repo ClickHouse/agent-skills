@@ -1,10 +1,10 @@
 ---
 name: infra-postgres
-description: Sets up and manages Postgres using the clickhousectl CLI — runs a local Docker-backed Postgres for development, and creates and operates managed ClickHouse Cloud Postgres services (connections, TLS, runtime config, read replicas, failover, point-in-time restore). Use when the user wants a Postgres or PostgreSQL database for their application, a local Postgres dev environment, psql access, or a managed/production Postgres in ClickHouse Cloud, or mentions moving a local Postgres to production.
+description: Sets up and manages Postgres using the clickhousectl CLI — runs a local Docker-backed Postgres for development, and creates and operates managed ClickHouse Cloud Postgres services (connections, TLS, runtime config, read replicas, failover, point-in-time restore). Use when the user wants a Postgres or PostgreSQL database for their application, a local Postgres dev environment, psql access, or a managed/production Postgres in ClickHouse Cloud, or mentions moving a local Postgres to production. Also use when migrating an existing Postgres database (Neon, Supabase, RDS, Aurora, Cloud SQL, self-hosted) into ClickHouse Cloud Postgres.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Postgres with clickhousectl
@@ -14,7 +14,7 @@ metadata:
 - **Local** — named, Docker-backed Postgres instances on the user's machine, for development.
 - **Cloud** — managed Postgres services in ClickHouse Cloud (beta), for production: HA, read replicas, point-in-time restore.
 
-This file routes to the right reference. The step-by-step workflows live in `ref/local.md` and `ref/cloud.md` — read the one that matches the user's situation before running commands.
+This file routes to the right reference. The step-by-step workflows live in `ref/local.md`, `ref/cloud.md`, and `ref/migrate.md` — read the one that matches the user's situation before running commands.
 
 ## Which reference to use
 
@@ -23,6 +23,7 @@ This file routes to the right reference. The step-by-step workflows live in `ref
 | Develop or prototype locally, run tests/CI against Postgres, no cloud account needed | [ref/local.md](ref/local.md) |
 | Go to production, host a managed Postgres, or use ClickHouse Cloud explicitly | [ref/cloud.md](ref/cloud.md) |
 | Operate an existing cloud service (passwords, TLS, config, replicas, failover, restore) | [ref/cloud.md](ref/cloud.md) |
+| Migrate an existing Postgres (Neon, Supabase, RDS, ...) into ClickHouse Cloud Postgres | [ref/migrate.md](ref/migrate.md) |
 | Develop locally now, ship to production later | Start with [ref/local.md](ref/local.md); it points to [ref/cloud.md](ref/cloud.md) when it's time to go to prod |
 
 If it's genuinely ambiguous (e.g. "set up Postgres for my app"), default to local for development tasks and ask before creating anything in the cloud — cloud services cost money.
@@ -47,5 +48,5 @@ All commands accept `--json` for machine-readable output. Exit codes follow `gh`
 
 ## Related
 
-- To replicate Postgres data into ClickHouse for analytics, see ClickPipes (`clickhousectl cloud clickpipe --help`).
+- To replicate Postgres data into ClickHouse for analytics, see ClickPipes (`clickhousectl cloud clickpipe --help`). ClickPipes cannot target a Postgres service — for Postgres-to-Postgres migration use [ref/migrate.md](ref/migrate.md).
 - For ClickHouse itself (local development or ClickHouse Cloud services), use the `infra-clickhouse` skill.
