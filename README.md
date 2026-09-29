@@ -109,7 +109,7 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* �
 
 ### Infra Postgres
 
-**Local and cloud workflows** for running Postgres with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-postgres/ref/local.md) for local Docker-backed Postgres development (start, psql client, `.env` wiring, lifecycle) and [`ref/cloud.md`](./skills/infra-postgres/ref/cloud.md) for managed ClickHouse Cloud Postgres services (beta) — authentication, service creation, connections and TLS, runtime configuration, read replicas, failover, and point-in-time restore. The local workflow hands off to cloud when going to production.
+**Local and cloud workflows** for running Postgres with [`clickhousectl`](https://github.com/ClickHouse/clickhousectl). The top-level `SKILL.md` is a decision tree that routes to the right reference: [`ref/local.md`](./skills/infra-postgres/ref/local.md) for local Docker-backed Postgres development (start, psql client, `.env` wiring, lifecycle) and [`ref/cloud.md`](./skills/infra-postgres/ref/cloud.md) for managed ClickHouse Cloud Postgres services (beta) — authentication, service creation, connections and TLS, runtime configuration, read replicas, failover, and point-in-time restore. [`ref/migrate.md`](./skills/infra-postgres/ref/migrate.md) migrates an existing Postgres (Neon, Supabase, RDS, ...) into ClickHouse Cloud Postgres with `pg_dump`/`pg_restore`. The local workflow hands off to cloud when going to production.
 
 **Location:** [`skills/infra-postgres/`](./skills/infra-postgres/)
 

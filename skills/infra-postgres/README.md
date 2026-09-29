@@ -6,6 +6,7 @@ A workflow skill covering Postgres via `clickhousectl`, in the normalized infra-
 SKILL.md        # decision tree: local vs cloud, shared prerequisites
 ref/local.md    # local Docker-backed Postgres (clickhousectl local postgres ...)
 ref/cloud.md    # ClickHouse Cloud Postgres, beta (clickhousectl cloud postgres ...)
+ref/migrate.md  # migrate an existing Postgres into ClickHouse Cloud Postgres (pg_dump/pg_restore)
 ```
 
 `SKILL.md` stays thin — it routes to the right ref. `ref/local.md` ends with a "going to production" pointer to `ref/cloud.md`.
