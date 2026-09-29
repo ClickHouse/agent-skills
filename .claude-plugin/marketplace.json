@@ -11,8 +11,8 @@
     {
       "name": "clickhouse-best-practices",
       "source": "./",
-      "description": "28 best practice rules for ClickHouse schema design, query optimization, and data ingestion — prioritized by impact",
-      "version": "0.3.0",
+      "description": "49 best practice rules for ClickHouse schema design, query optimization, data ingestion, and live-service diagnosis — prioritized by impact",
+      "version": "0.4.0",
       "author": {
         "name": "ClickHouse Inc"
       },
