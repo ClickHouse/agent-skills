@@ -61,4 +61,15 @@ SELECT * FROM orders_denormalized WHERE segment = 'enterprise';
 
 **Critical warning:** Query should run quickly compared to refresh interval. Don't schedule every 10 seconds if the query takes 10+ seconds.
 
+**Monitor refreshes** in `system.view_refreshes`, which shows failures and stale views:
+
+```sql
+SELECT database, view, status, last_success_time, last_refresh_time,
+       next_refresh_time, retry, substring(exception, 1, 200) AS exception
+FROM system.view_refreshes
+WHERE exception != '' OR last_success_time IS NULL
+   OR last_success_time < now() - INTERVAL 1 DAY
+LIMIT 50;
+```
+
 Reference: [Use Materialized Views](https://clickhouse.com/docs/best-practices/use-materialized-views)

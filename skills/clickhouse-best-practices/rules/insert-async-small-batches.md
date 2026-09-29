@@ -43,7 +43,7 @@ ALTER USER my_app_user SETTINGS
 **Flush conditions (whichever occurs first):**
 - Buffer reaches `async_insert_max_data_size`
 - Time threshold `async_insert_busy_timeout_ms` elapses
-- Maximum insert queries accumulate
+- `async_insert_max_query_number` queries accumulate (counted only when async insert deduplication is enabled)
 
 **Return modes:**
 
@@ -51,5 +51,7 @@ ALTER USER my_app_user SETTINGS
 |---------|----------|----------|
 | `wait_for_async_insert=1` | Waits for flush, confirms durability | **Recommended** |
 | `wait_for_async_insert=0` | Fire-and-forget, unaware of errors | **Risky** - only if you accept data loss |
+
+With `wait_for_async_insert=0`, check flush results on the server; see [insert-async-verify-flushes](insert-async-verify-flushes.md).
 
 Reference: [Selecting an Insert Strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
