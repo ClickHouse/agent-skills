@@ -1,6 +1,6 @@
 ---
 name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 31 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 32 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
@@ -9,7 +9,7 @@ metadata:
 
 # ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 31 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
+Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 32 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
 
 > **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
@@ -84,12 +84,14 @@ If your system dispatches ClickHouse tasks to specialized subagents:
 3. `rules/query-join-use-any.md` - ANY vs regular JOIN
 4. `rules/query-index-skipping-indices.md` - Secondary index usage
 5. `rules/schema-pk-filter-on-orderby.md` - Filter alignment with ORDER BY
+6. `rules/query-dedup-replacingmergetree.md` - ReplacingMergeTree read patterns (FINAL, argMax, LIMIT BY)
 
 **Check for:**
 - [ ] Filters use ORDER BY prefix columns
 - [ ] JOINs filter tables before joining (not after)
 - [ ] Correct JOIN algorithm for table sizes
 - [ ] Skipping indices for non-ORDER BY filter columns
+- [ ] Reads from ReplacingMergeTree tables use FINAL, argMax, or ORDER BY + LIMIT BY (not a raw SELECT)
 
 ### For Insert Strategy Reviews (data ingestion, updates, deletes)
 
@@ -154,6 +156,7 @@ Structure your response as follows:
 | 12 | Agent Schema Discovery | CRITICAL | `agent-discovery-` | 1 |
 | 13 | Agent Query Safety | CRITICAL | `agent-query-` | 1 |
 | 14 | Agent Connectivity + Formats | HIGH | `agent-connect-` | 1 |
+| 15 | ReplacingMergeTree Deduplication | CRITICAL | `query-dedup-` | 1 |
 
 ---
 
@@ -201,6 +204,10 @@ Structure your response as follows:
 
 - `query-mv-incremental` - Incremental MVs for real-time aggregations
 - `query-mv-refreshable` - Refreshable MVs for complex joins
+
+### Query Optimization - ReplacingMergeTree (CRITICAL)
+
+- `query-dedup-replacingmergetree` - Use FINAL, argMax, or ORDER BY + LIMIT BY; a raw SELECT can return duplicate/stale/deleted rows
 
 ### Insert Strategy - Batching (CRITICAL)
 
