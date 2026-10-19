@@ -56,17 +56,17 @@ Limits are checked at block boundaries, so actual scans and runtime can overshoo
 | Setting | Self-hosted default | Cloud default |
 |---------|---------------------|---------------|
 | `max_memory_usage` | `0` (unlimited) | Depends on replica RAM — not unlimited |
-| `max_bytes_before_external_group_by` | `0` (no spill) | Half the memory per replica — spills automatically |
-| `max_bytes_before_external_sort` | `0` (no spill) | Half the memory per replica — spills automatically |
+| `max_bytes_before_external_group_by` | `0`, but since 25.1 `max_bytes_ratio_before_external_group_by = 0.5` spills at half of available memory | Half the memory per replica — spills automatically |
+| `max_bytes_before_external_sort` | `0`, but since 25.1 `max_bytes_ratio_before_external_sort = 0.5` spills at half of available memory | Half the memory per replica — spills automatically |
 | `max_rows_to_read` / `max_bytes_to_read` | `0` (unlimited) | `0` (unlimited) — must be set explicitly on both |
 | `max_execution_time` | `0` (unlimited) | `0` (unlimited) — must be set explicitly on both |
 
-On self-hosted, GROUP BY and ORDER BY have no automatic memory ceiling — set the `max_bytes_before_external_*` settings explicitly or enforce via profile. On Cloud, GROUP BY / ORDER BY spill to disk automatically and per-query memory is bounded, but scan and execution-time caps are still your job.
+On self-hosted versions before 25.1, GROUP BY and ORDER BY have no automatic spill threshold — set the `max_bytes_before_external_*` settings explicitly or enforce via profile. From 25.1, the `max_bytes_ratio_before_external_*` settings spill at half of available memory by default. On Cloud, GROUP BY / ORDER BY spill to disk automatically and per-query memory is bounded, but scan and execution-time caps are still your job.
 
 **When things go wrong:**
 
 - **Timeout** (`TIMEOUT_EXCEEDED`): Narrow the time range, add sort key filters, run `EXPLAIN ESTIMATE` to check scan size before retrying. Consider `max_estimated_execution_time` to reject expensive queries up front.
-- **Memory error** (`MEMORY_LIMIT_EXCEEDED`): Reduce actual memory use — narrow filters, add `LIMIT`, lower GROUP BY cardinality, enable `max_bytes_before_external_group_by` (already on by default in Cloud, off on self-hosted), or split into smaller time windows. Raising `max_memory_usage` only helps if you're authorized and the ceiling is genuinely the problem; *lowering* it makes the error happen sooner, not later.
+- **Memory error** (`MEMORY_LIMIT_EXCEEDED`): Reduce actual memory use — narrow filters, add `LIMIT`, lower GROUP BY cardinality, enable `max_bytes_before_external_group_by` (already on by default in Cloud and, via the ratio settings, on self-hosted 25.1+), or split into smaller time windows. Raising `max_memory_usage` only helps if you're authorized and the ceiling is genuinely the problem; *lowering* it makes the error happen sooner, not later.
 - **Too many parts** (`TOO_MANY_PARTS`): Back off inserts — merges are behind. Wait and retry.
 
 **Role-level hardening (belt-and-suspenders):**

@@ -52,6 +52,8 @@ DELETE FROM orders WHERE status = 'cancelled';
 -- Physical deletion happens during normal merges
 ```
 
+Masked rows stay on disk, and queries pay to filter them, until merges rewrite the parts. See [insert-mutation-lightweight-delete-cost](insert-mutation-lightweight-delete-cost.md).
+
 **Correct - DROP PARTITION for Bulk Deletion:**
 
 ```sql

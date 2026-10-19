@@ -33,7 +33,7 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 
 ### ClickHouse Best Practices
 
-**28 rules** covering schema design, query optimization, and data ingestion—prioritized by impact.
+**49 rules** covering schema design, query optimization, data ingestion, and diagnosing a live service—prioritized by impact.
 
 | Category | Rules | Impact |
 |----------|-------|--------|
@@ -41,13 +41,17 @@ Skills follow the open specification at [agentskills.io](https://agentskills.io)
 | Data Type Selection | 5 | CRITICAL |
 | JOIN Optimization | 5 | CRITICAL |
 | Insert Batching | 1 | CRITICAL |
-| Mutation Avoidance | 2 | CRITICAL |
+| Mutations | 4 | CRITICAL |
 | Partitioning Strategy | 4 | HIGH |
-| Skipping Indices | 1 | HIGH |
-| Materialized Views | 2 | HIGH |
-| Async Inserts | 2 | HIGH |
+| Skipping Indices | 2 | HIGH |
+| Materialized Views | 6 | HIGH |
+| Async Inserts | 3 | HIGH |
 | OPTIMIZE Avoidance | 1 | HIGH |
 | JSON Usage | 1 | MEDIUM |
+| Agent Integration and System Tables | 5 | HIGH |
+| Deduplication, Parts and CDC Diagnosis | 4 | HIGH |
+| Memory and Query Diagnosis | 2 | HIGH |
+| TTL and Compression | 2 | MEDIUM |
 
 **Location:** [`skills/clickhouse-best-practices/`](./skills/clickhouse-best-practices/)
 

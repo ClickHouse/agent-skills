@@ -1,9 +1,9 @@
 {
-  "version": "0.4.0",
+  "version": "0.5.0",
   "organization": "ClickHouse Inc",
-  "date": "January 2026",
+  "date": "September 2026",
   "clickhouseVersion": "24.1+",
-  "abstract": "Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization.",
+  "abstract": "Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization. Diagnostic rules explain how to read system tables as evidence on a live service, including TOO_MANY_PARTS, stuck mutations, memory errors, insert deduplication, and materialized views that return wrong results.",
   "references": [
     "https://clickhouse.com/docs",
     "https://github.com/ClickHouse/ClickHouse"
