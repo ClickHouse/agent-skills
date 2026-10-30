@@ -114,7 +114,7 @@
       "name": "infra-clickhouse",
       "source": "./skills/infra-clickhouse/",
       "description": "Local and cloud workflows for running ClickHouse with clickhousectl — local development (install ClickHouse, start a server, create schemas, seed data) and ClickHouse Cloud deployment (authenticate, create a service, migrate schemas, connect an application), with a decision tree routing between them",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "author": {
         "name": "ClickHouse Inc"
       },
@@ -135,7 +135,7 @@
       "name": "infra-postgres",
       "source": "./skills/infra-postgres/",
       "description": "Local and cloud workflows for running Postgres with clickhousectl — local Docker-backed Postgres for development (start, psql client, .env wiring, lifecycle) and managed ClickHouse Cloud Postgres services, beta (authentication, service creation, connections and TLS, runtime config, read replicas, failover, point-in-time restore), with a decision tree routing between them",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "author": {
         "name": "ClickHouse Inc"
       },
