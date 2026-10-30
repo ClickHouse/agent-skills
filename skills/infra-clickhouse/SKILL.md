@@ -8,7 +8,7 @@ metadata:
   clickhousectl-version: "0.5.0"
 ---
 
-Last updated 2026-10-30 for clickhousectl 0.5.0. If `clickhousectl --version` reports a different version, update the CLI with `clickhousectl update` and the skills with `clickhousectl skills` (add `--detected-only` without a TTY, and `--global` if the skills are installed in your home directory).
+Last updated 2026-10-30 for clickhousectl 0.5.0. (update the CLI with `clickhousectl update`, update skills with `clickhousectl skills`)
 
 # ClickHouse with clickhousectl
 
