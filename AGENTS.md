@@ -156,6 +156,20 @@ Skills are loaded on-demand — only the skill name and description are loaded a
 - **Individual rule files** — allows agents to read only relevant rules on-demand
 - **File references work one level deep** — link directly from SKILL.md to supporting files
 
+### Skills That Use clickhousectl
+
+`clickhousectl skills` installs skills from this repository's `main` branch, so a user's CLI and skills can be different versions. Every skill that runs `clickhousectl` (currently `infra-clickhouse`, `infra-postgres` and `clickstack-otel-collector`) records the CLI version it was written for in two places:
+
+- A `clickhousectl-version` entry in the SKILL.md frontmatter `metadata`, quoted like `version`.
+- A version header as the first lines of the SKILL.md body, straight after the frontmatter. Agents read only `name` and `description` before a skill triggers, so the instruction must be in the body:
+
+  ```markdown
+  Last updated YYYY-MM-DD for clickhousectl X.Y.Z.
+  If `clickhousectl --version` reports a different version, update the CLI with `clickhousectl update` and the skills with `clickhousectl skills` (add `--detected-only` without a TTY, and `--global` if the skills are installed in your home directory).
+  ```
+
+Whenever you edit one of these skills, set the header date to the day of the change and set both the header and `clickhousectl-version` to the current clickhousectl release (`gh release view --repo ClickHouse/clickhousectl`), after checking the skill against that release's `--help`. Also bump `version` in the SKILL.md frontmatter, `metadata.json` (with its `date`) and `.claude-plugin/marketplace.json`. A new skill that uses clickhousectl gets the same header and metadata entry.
+
 ### Build System Requirements
 
 Each skill should have a build package that:

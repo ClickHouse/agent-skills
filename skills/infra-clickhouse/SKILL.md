@@ -4,8 +4,12 @@ description: Sets up and manages ClickHouse using the clickhousectl CLI — inst
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.3.0"
+  version: "0.3.1"
+  clickhousectl-version: "0.5.0"
 ---
+
+Last updated 2026-10-30 for clickhousectl 0.5.0.
+If `clickhousectl --version` reports a different version, update the CLI with `clickhousectl update` and the skills with `clickhousectl skills` (add `--detected-only` without a TTY, and `--global` if the skills are installed in your home directory).
 
 # ClickHouse with clickhousectl
 

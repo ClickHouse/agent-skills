@@ -23,4 +23,4 @@ clickhousectl cloud --help
 
 and each subcommand's `--help` (the `CONTEXT FOR AGENTS` sections in the help output are the source of truth).
 
-Bump `version` in both the SKILL.md frontmatter and `metadata.json` when editing, and keep the SKILL.md frontmatter description emphasizing **both** the local and cloud cases — it is what triggers skill activation.
+Bump `version` in the SKILL.md frontmatter, `metadata.json` and `.claude-plugin/marketplace.json` when editing. Also update the version header at the top of the SKILL.md body (date and clickhousectl version) and the matching `clickhousectl-version` frontmatter entry to the clickhousectl release you verified against; see "Skills That Use clickhousectl" in the root `AGENTS.md`. Keep the SKILL.md frontmatter description emphasizing **both** the local and cloud cases — it is what triggers skill activation.

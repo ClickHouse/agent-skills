@@ -4,8 +4,12 @@ description: Use when a user wants to wire an OpenTelemetry collector into a Man
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.6.0"
+  version: "0.6.1"
+  clickhousectl-version: "0.5.0"
 ---
+
+Last updated 2026-10-30 for clickhousectl 0.5.0.
+If `clickhousectl --version` reports a different version, update the CLI with `clickhousectl update` and the skills with `clickhousectl skills` (add `--detected-only` without a TTY, and `--global` if the skills are installed in your home directory).
 
 # Set up an OpenTelemetry collector for Managed ClickStack
 
