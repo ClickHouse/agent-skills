@@ -4,8 +4,11 @@ description: Sets up and manages Postgres using the clickhousectl CLI — runs a
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.2.0"
+  version: "0.3.0"
+  clickhousectl-version: "0.5.0"
 ---
+
+Last updated 2026-10-30 for clickhousectl 0.5.0. (update the CLI with `clickhousectl update`, update skills with `clickhousectl skills`)
 
 # Postgres with clickhousectl
 
@@ -44,7 +47,7 @@ curl -fsSL https://clickhouse.com/cli | sh
 
 This installs to `~/.local/bin/clickhousectl` (with a `chctl` alias). If the command is still not found, suggest `export PATH="$HOME/.local/bin:$PATH"` or a new terminal.
 
-All commands accept `--json` for machine-readable output. Exit codes follow `gh` conventions: 0 success, 1 error, 2 cancelled, 4 auth required.
+All commands accept `--json` for machine-readable output, and switch to JSON automatically when run by a coding agent. SQL output from `local client` and `local postgres client` stays in psql or clickhouse-client's native format. Exit codes: 0 success, 1 error, 2 usage error, 3 cancelled, 4 auth required.
 
 ## Related
 
