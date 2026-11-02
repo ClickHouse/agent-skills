@@ -47,4 +47,6 @@ ALTER TABLE events DROP PARTITION '202301';
 ALTER TABLE events_archive ATTACH PARTITION '202301' FROM events;
 ```
 
+If expired rows are not being removed, see [schema-ttl-verify](schema-ttl-verify.md).
+
 Reference: [Choosing a Partitioning Key](https://clickhouse.com/docs/best-practices/choosing-a-partitioning-key)

@@ -1,15 +1,15 @@
 ---
 name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 31 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 49 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 31 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
+Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 49 rules across 4 main categories (schema, query, insert, agent), prioritized by impact. Diagnostic rules cover reading evidence from a live service: system tables, stuck mutations, TOO_MANY_PARTS, memory errors, and data that looks duplicated or missing.
 
 > **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
@@ -74,6 +74,7 @@ If your system dispatches ClickHouse tasks to specialized subagents:
 - [ ] LowCardinality applied to appropriate string columns
 - [ ] Partition key cardinality bounded (100-1,000 values)
 - [ ] ReplacingMergeTree has version column if used
+- [ ] ReplacingMergeTree partition key never changes for a row (see `query-replacingmergetree-dedup-scope`)
 
 ### For Query Reviews (SELECT, JOIN, aggregations)
 
@@ -90,6 +91,9 @@ If your system dispatches ClickHouse tasks to specialized subagents:
 - [ ] JOINs filter tables before joining (not after)
 - [ ] Correct JOIN algorithm for table sizes
 - [ ] Skipping indices for non-ORDER BY filter columns
+- [ ] Index and projection use confirmed with `EXPLAIN indexes = 1` (see `query-index-verify-usage`)
+- [ ] GROUP BY materialized views target SummingMergeTree/AggregatingMergeTree, and queries re-aggregate (see `query-mv-target-engine`)
+- [ ] Materialized view output columns are aliased to the target column names (see `query-mv-column-names`)
 
 ### For Insert Strategy Reviews (data ingestion, updates, deletes)
 
@@ -106,6 +110,34 @@ If your system dispatches ClickHouse tasks to specialized subagents:
 - [ ] No ALTER TABLE UPDATE for frequent changes
 - [ ] ReplacingMergeTree or CollapsingMergeTree for update patterns
 - [ ] Async inserts enabled for high-frequency small batches
+- [ ] Retries resend identical batches (see `insert-dedup-retries`)
+- [ ] With `wait_for_async_insert=0`, flush failures are monitored in `system.asynchronous_insert_log` (see `insert-async-verify-flushes`)
+
+### For Diagnosing a Live Service (errors, slow inserts, stuck operations)
+
+Start with how to read the evidence, then open the rule for the symptom:
+
+1. `rules/agent-system-tables-read-safely.md` - Bounded, per-replica reads of system log tables
+2. `rules/agent-system-errors-vs-error-log.md` - Counting errors over a time window
+
+| Symptom | Rule |
+|---------|------|
+| `TOO_MANY_PARTS`, "Delaying inserting block" | `rules/insert-too-many-parts-diagnose.md` |
+| Rows missing or duplicated after retries | `rules/insert-dedup-retries.md` |
+| Async inserts accepted but data missing | `rules/insert-async-verify-flushes.md` |
+| Mutation not finishing, `TOO_MANY_MUTATIONS` | `rules/insert-mutation-diagnose-stuck.md` |
+| Queries slower after lightweight `DELETE` | `rules/insert-mutation-lightweight-delete-cost.md` |
+| `MEMORY_LIMIT_EXCEEDED` (241) | `rules/query-memory-diagnose-oom.md` |
+| Same query sometimes slow | `rules/query-perf-compare-executions.md` |
+| Index or projection not helping | `rules/query-index-verify-usage.md` |
+| Inserts slowed or failing because of materialized views | `rules/query-mv-insert-cost.md` |
+| Aggregated view totals wrong | `rules/query-mv-target-engine.md`, `rules/query-mv-chained-and-joins.md`, `rules/query-mv-column-names.md` |
+| ReplacingMergeTree still returns duplicates | `rules/query-replacingmergetree-dedup-scope.md` |
+| ClickPipes Postgres CDC table counts look wrong | `rules/query-cdc-clickpipes-postgres.md` |
+| TTL not removing data | `rules/schema-ttl-verify.md` |
+| Table larger than expected | `rules/schema-compression-measure.md` |
+
+Diagnosis does not authorize changes. Ask the user before running `KILL`, `SYSTEM`, `OPTIMIZE`, or any `ALTER` a rule suggests.
 
 ---
 
@@ -144,16 +176,25 @@ Structure your response as follows:
 | 2 | Data Type Selection | CRITICAL | `schema-types-` | 5 |
 | 3 | JOIN Optimization | CRITICAL | `query-join-` | 5 |
 | 4 | Insert Batching | CRITICAL | `insert-batch-` | 1 |
-| 5 | Mutation Avoidance | CRITICAL | `insert-mutation-` | 2 |
+| 5 | Mutations | CRITICAL | `insert-mutation-` | 4 |
 | 6 | Partitioning Strategy | HIGH | `schema-partition-` | 4 |
-| 7 | Skipping Indices | HIGH | `query-index-` | 1 |
-| 8 | Materialized Views | HIGH | `query-mv-` | 2 |
-| 9 | Async Inserts | HIGH | `insert-async-` | 2 |
+| 7 | Skipping Indices | HIGH | `query-index-` | 2 |
+| 8 | Materialized Views | HIGH | `query-mv-` | 6 |
+| 9 | Async Inserts | HIGH | `insert-async-` | 3 |
 | 10 | OPTIMIZE Avoidance | HIGH | `insert-optimize-` | 1 |
 | 11 | JSON Usage | MEDIUM | `schema-json-` | 1 |
 | 12 | Agent Schema Discovery | CRITICAL | `agent-discovery-` | 1 |
 | 13 | Agent Query Safety | CRITICAL | `agent-query-` | 1 |
 | 14 | Agent Connectivity + Formats | HIGH | `agent-connect-` | 1 |
+| 15 | Agent System Table Reading | HIGH | `agent-system-` | 2 |
+| 16 | Insert Deduplication | HIGH | `insert-dedup-` | 1 |
+| 17 | Too Many Parts Diagnosis | HIGH | `insert-too-many-parts-` | 1 |
+| 18 | ReplacingMergeTree Dedup Scope | HIGH | `query-replacingmergetree-` | 1 |
+| 19 | ClickPipes CDC Tables | HIGH | `query-cdc-` | 1 |
+| 20 | Memory Diagnosis | HIGH | `query-memory-` | 1 |
+| 21 | Query Performance Diagnosis | MEDIUM | `query-perf-` | 1 |
+| 22 | TTL Verification | MEDIUM-HIGH | `schema-ttl-` | 1 |
+| 23 | Compression Measurement | MEDIUM | `schema-compression-` | 1 |
 
 ---
 
@@ -185,6 +226,11 @@ Structure your response as follows:
 
 - `schema-json-when-to-use` - JSON for dynamic schemas; typed columns for known
 
+### Schema Design - Storage Lifecycle (MEDIUM)
+
+- `schema-ttl-verify` - Why TTL isn't removing data
+- `schema-compression-measure` - Measure compression before tuning codecs
+
 ### Query Optimization - JOINs (CRITICAL)
 
 - `query-join-choose-algorithm` - Select algorithm based on table sizes
@@ -196,11 +242,26 @@ Structure your response as follows:
 ### Query Optimization - Indices (HIGH)
 
 - `query-index-skipping-indices` - Skipping indices for non-ORDER BY filters
+- `query-index-verify-usage` - Confirm primary key, skip index and projection use
 
 ### Query Optimization - Materialized Views (HIGH)
 
 - `query-mv-incremental` - Incremental MVs for real-time aggregations
 - `query-mv-refreshable` - Refreshable MVs for complex joins
+- `query-mv-target-engine` - Aggregating target engines for GROUP BY views
+- `query-mv-chained-and-joins` - Chained views and JOINs see the inserted block
+- `query-mv-column-names` - View output columns match the target by name
+- `query-mv-insert-cost` - Views run inside the INSERT; diagnose with query_views_log
+
+### Query Optimization - Deduplicated and CDC Tables (HIGH)
+
+- `query-replacingmergetree-dedup-scope` - Dedup happens only at merge time, within a partition
+- `query-cdc-clickpipes-postgres` - Querying ClickPipes Postgres CDC tables
+
+### Query Optimization - Diagnosis (HIGH)
+
+- `query-memory-diagnose-oom` - Find which memory limit was hit and why
+- `query-perf-compare-executions` - Compare individual executions, not averages
 
 ### Insert Strategy - Batching (CRITICAL)
 
@@ -210,11 +271,19 @@ Structure your response as follows:
 
 - `insert-async-small-batches` - Async inserts for high-frequency small batches
 - `insert-format-native` - Native format for best performance
+- `insert-async-verify-flushes` - Check flush results when not waiting for async inserts
+
+### Insert Strategy - Deduplication and Parts (HIGH)
+
+- `insert-dedup-retries` - Insert block deduplication and safe retries
+- `insert-too-many-parts-diagnose` - Diagnose TOO_MANY_PARTS before raising limits
 
 ### Insert Strategy - Mutations (CRITICAL)
 
 - `insert-mutation-avoid-update` - ReplacingMergeTree instead of ALTER UPDATE
 - `insert-mutation-avoid-delete` - Lightweight DELETE or DROP PARTITION
+- `insert-mutation-diagnose-stuck` - Read system.mutations before killing a mutation
+- `insert-mutation-lightweight-delete-cost` - Query cost of lightweight DELETE until merges
 
 ### Insert Strategy - Optimization (HIGH)
 
@@ -231,6 +300,11 @@ Structure your response as follows:
 ### Agent Integration - Connectivity + Formats (HIGH)
 
 - `agent-connect-mcp` - MCP + CLI setup, credential discovery, output format selection
+
+### Agent Integration - Reading System Tables (HIGH)
+
+- `agent-system-tables-read-safely` - Bounded, per-replica reads of system log tables
+- `agent-system-errors-vs-error-log` - Cumulative counters vs per-interval error history
 
 ---
 
@@ -252,6 +326,8 @@ This skill activates when you encounter:
 - Update/delete strategy questions
 - ReplacingMergeTree or other specialized engine usage
 - Partitioning strategy decisions
+- Diagnosing a live service: TOO_MANY_PARTS, stuck mutations, memory errors, missing or duplicated rows, TTL not applying
+- Reading `system.query_log`, `system.part_log`, `system.errors` and other system tables as evidence
 
 ---
 

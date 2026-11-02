@@ -51,4 +51,6 @@ GROUP BY table
 ORDER BY parts DESC;
 ```
 
+If inserts are already delayed or rejected, see [insert-too-many-parts-diagnose](insert-too-many-parts-diagnose.md).
+
 Reference: [Selecting an Insert Strategy](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy)
