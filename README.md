@@ -83,6 +83,24 @@ Complements `clickhouse-best-practices` by answering *when*, *why*, and *how* �
 
 **For agents:** The skill activates when users report errors, unexpected behavior, or configuration questions involving the ClickHouse Node.js client — including vague symptoms like "my inserts keep failing" or "connection drops randomly" in a Node.js context. Not used for browser/Web client issues.
 
+### ClickHouse Managed Postgres RCA
+
+**Evidence-based root-cause analysis** for ClickHouse-managed Postgres instances. Scrapes the Prometheus endpoint for system signal, pulls per-digest evidence from the Slow Query Patterns API, triages against a heuristic library, and produces a structured recommendation. Recommend-only — never executes DDL or kills queries.
+
+| Heuristic | Detects |
+|-----------|---------|
+| Full scan | Missing or unused index via blocks-touched-per-row ratio |
+| Hot loop (N+1) | Application-side tight loop via high call count with low per-call latency |
+| Write congestion | Deadlocks, slow writes, high rollback rate via WAL and Prom counters |
+
+Both APIs are Beta. The skill resolves paths and field names from the live OpenAPI spec on first use, so it stays correct as the surface evolves.
+
+**Location:** [`skills/clickhouse-managed-postgres-rca/`](./skills/clickhouse-managed-postgres-rca/)
+
+**For humans:** Read [SKILL.md](./skills/clickhouse-managed-postgres-rca/SKILL.md) for an overview, or [AGENTS.md](./skills/clickhouse-managed-postgres-rca/AGENTS.md) for the compiled guide.
+
+**For agents:** The skill activates when users report slowness, high CPU, low throughput, cache thrash, or any unexplained performance issue on a ClickHouse-managed Postgres instance.
+
 ### chdb DataStore
 
 **Pandas-compatible API** for chdb — drop-in pandas replacement backed by ClickHouse. Write `import chdb.datastore as pd` and use the same pandas API, 10-100x faster. Supports 16+ data sources (MySQL, PostgreSQL, S3, MongoDB, Iceberg, Delta Lake, etc.) with cross-source joins.

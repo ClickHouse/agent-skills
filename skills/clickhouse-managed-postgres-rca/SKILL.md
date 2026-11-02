@@ -27,7 +27,7 @@ using a ClickHouse Cloud API key/secret pair):
   under the Postgres tag. Returns per-digest latency, IO, and
   call statistics for normalized query patterns. **Beta.**
 
-Both endpoints require an `organizationId` and a `serviceId` as
+Both endpoints require an `organizationId` and a `postgresId` as
 path parameters. The user must supply both, plus the API
 key/secret pair.
 
