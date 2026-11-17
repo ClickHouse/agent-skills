@@ -51,17 +51,19 @@ FROM system.tables
 WHERE database = 'analytics' AND table = 'events';
 ```
 
-This is the most important step for writing efficient queries. Filtering on sort key columns allows ClickHouse to skip entire data granules. Filtering on non-key columns forces a full scan.
+Filtering on suitable sort-key expressions can prune data granules. Filters on other columns may use secondary indexes or other access paths, so inspect those before estimating a scan.
 
-**Step 5: Check for skipping indexes**
+**Step 5: Inspect secondary indexes and server version**
 
 ```sql
+SELECT version();
+
 SELECT name, type_full, expr, granularity
 FROM system.data_skipping_indices
 WHERE database = 'analytics' AND table = 'events';
 ```
 
-Skipping indexes (`bloom_filter`, `minmax`, `set`, `tokenbf_v1`) tell you which non-sort-key columns already have optimized filter paths. If an index exists on a column, filtering on it is efficient even though it's not in the sort key. Missing this step means you won't know which "non-key" filters are actually fast.
+Index metadata identifies possible access paths, not guaranteed efficiency. Check expression matching, predicate support, settings, data distribution, and existing-part coverage. `TYPE text` appears in this system table but stores posting-list row IDs; read `query-index-text-native`, `query-index-text-semantics`, and `query-index-text-plan` when it is present or text search is requested. A large text-index granularity does not imply only part-level filtering. Use SHOW CREATE TABLE to inspect the full definition, including tokenization and normalization.
 
 **Step 6: Sample data**
 
@@ -89,8 +91,9 @@ GROUP BY event_type;
 
 Look for:
 - **Keys** section showing your sort key columns are being used for filtering
-- **Parts** and **Granules** counts — if these are not significantly reduced from the total, your filters aren't pruning effectively
-- **Skip** entries showing data skipping index usage
+- **Parts** and **Granules** counts showing pruning at those levels
+- **Skip** entries identifying secondary indexes
+- For `TYPE text`, use `EXPLAIN PLAN actions = 1, indexes = 1` and inspect virtual text-index filters and residual predicates; granule counts alone do not establish direct read or the cost of reading text
 
 For a quick cost estimate without running the query:
 

@@ -15,7 +15,7 @@ The section ID (in parentheses) is the filename prefix used to group rules.
 
 **Impact:** CRITICAL
 
-**Description:** Query patterns dramatically affect performance. JOIN algorithms, filtering strategies, skipping indices, and materialized views can reduce query time from minutes to milliseconds. Pre-computed aggregations read thousands of rows instead of billions.
+**Description:** Query patterns dramatically affect performance. JOIN algorithms, filtering strategies, skipping indices, native text indexes and search semantics, and materialized views can reduce query time from minutes to milliseconds. Pre-computed aggregations read thousands of rows instead of billions.
 
 ## 3. Insert Strategy (insert)
 

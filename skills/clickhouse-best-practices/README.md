@@ -10,7 +10,7 @@ npx skills add ClickHouse/clickhouse-agent-skills
 
 ## What's Included
 
-**31 atomic rules** organized by prefix:
+**36 atomic rules** organized by prefix:
 
 | Prefix | Count | Coverage |
 |--------|-------|----------|
@@ -19,7 +19,7 @@ npx skills add ClickHouse/clickhouse-agent-skills
 | `schema-partition-*` | 4 | Partitioning strategy, lifecycle management |
 | `schema-json-*` | 1 | JSON type usage |
 | `query-join-*` | 5 | JOIN algorithms, filtering, alternatives |
-| `query-index-*` | 1 | Data skipping indices |
+| `query-index-*` | 6 | Conventional skipping indices and native full-text search |
 | `query-mv-*` | 2 | Incremental and refreshable MVs |
 | `insert-batch-*` | 1 | Batch sizing (10K-100K rows) |
 | `insert-async-*` | 2 | Async inserts, data formats |
@@ -36,6 +36,8 @@ This skill activates when you:
 - "Optimize this query..."
 - "Design a schema for..."
 - "Why is this query slow?"
+- "How does native full-text search work?"
+- "Search phrases, languages, Map/JSON fields, or tokens..."
 - "How should I insert data into..."
 - "Should I use UPDATE or..."
 - "Connect Claude to ClickHouse..."
@@ -49,6 +51,7 @@ This skill activates when you:
 | `SKILL.md` | Quick reference and decision frameworks |
 | `AGENTS.md` | Complete rule reference (auto-generated) |
 | `rules/*.md` | Individual rule definitions |
+| `references/text-search-*.md` | Full feature, language, and version details |
 
 ## Related Documentation
 
