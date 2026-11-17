@@ -9,9 +9,11 @@ tags: [query, index, skipping, bloom_filter]
 
 **Impact: HIGH**
 
-Queries filtering on columns not in ORDER BY cannot use the primary index and result in full scans. Data skipping indices store metadata about blocks and skip granules that definitely don't match.
+Filters on columns outside ORDER BY often need an additional access path to avoid scanning candidate data. Conventional data skipping indices store summaries for blocks and skip granules that definitely do not match. Their usefulness depends on the predicate and the distribution of values within blocks.
 
-**Important:** Skip indices should be considered **after** optimizing data types, primary key selection, and materialized views.
+Native `TYPE text` indexes additionally store token-to-row-ID posting lists. For text search, read `query-index-text-native`, `query-index-text-semantics`, and `query-index-text-plan`; do not apply block-summary selectivity or GRANULARITY advice to text indexes without checking their execution path.
+
+**Important:** Evaluate conventional skipping indices alongside the table's data types, primary key, and workload. Native text indexes are a purpose-built access path for text search and should be considered during search schema design.
 
 **When to use:**
 - High overall cardinality but low cardinality within blocks
@@ -20,7 +22,7 @@ Queries filtering on columns not in ORDER BY cannot use the primary index and re
 
 **When NOT to use:**
 - As a first optimization step
-- Matching values scattered across many blocks
+- Conventional block-summary indexes when nearly every block contains a match
 - Without testing on real data
 
 **Incorrect (filtering on non-ORDER BY column):**
@@ -63,8 +65,10 @@ ALTER TABLE events MATERIALIZE INDEX idx_user_id;
 | `bloom_filter` | Equality on high-cardinality | `WHERE user_id = 123` |
 | `set(N)` | Low cardinality (N unique values) | `WHERE status IN ('a','b')` |
 | `minmax` | Range queries | `WHERE amount > 1000` |
-| `ngrambf_v1` | Text search | `WHERE text LIKE '%term%'` |
-| `tokenbf_v1` | Token search | `WHERE hasToken(text, 'word')` |
+| `text` | Native text search; GA in 26.2+ | `WHERE hasAllTokens(text, 'connection timeout')` |
+| `ngrambf_v1`, `tokenbf_v1` | Deprecated legacy text-search indexes; inspect compatibility before migrating | Existing deployments only |
+
+The deprecation applies to the two legacy text index types, not to the generic `bloom_filter` index. Predicate support and direct-read eligibility for `text` depend on tokenizer and version; see the dedicated rules.
 
 **Validation:**
 
@@ -74,4 +78,4 @@ SELECT * FROM events WHERE user_id = 12345;
 -- Look for "Skip" in output showing granules skipped
 ```
 
-Reference: [Use Data Skipping Indices Where Appropriate](https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate)
+Reference: [Use Data Skipping Indices Where Appropriate](https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate), [Text indexes](https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes)

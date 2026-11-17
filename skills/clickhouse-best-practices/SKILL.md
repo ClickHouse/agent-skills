@@ -1,15 +1,15 @@
 ---
 name: clickhouse-best-practices
-description: MUST USE when reviewing ClickHouse schemas, queries, or configurations. Contains 31 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
+description: MUST USE when reviewing ClickHouse schemas, queries, native full-text search, or configurations. Contains 36 rules that MUST be checked before providing recommendations. Always read relevant rule files and cite specific rules in responses.
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # ClickHouse Best Practices
 
-Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 31 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
+Comprehensive guidance for ClickHouse covering schema design, query optimization, data ingestion, and AI agent connectivity. Contains 36 rules across 4 main categories (schema, query, insert, agent), prioritized by impact.
 
 > **Official docs:** [ClickHouse Best Practices](https://clickhouse.com/docs/best-practices)
 
@@ -18,7 +18,7 @@ Comprehensive guidance for ClickHouse covering schema design, query optimization
 **Before answering ClickHouse questions, follow this priority order:**
 
 1. **Check for applicable rules** in the `rules/` directory
-2. **If rules exist:** Apply them and cite them in your response using "Per `rule-name`..."
+2. **If rules exist:** Apply rules that match the deployed ClickHouse version and cite them using "Per `rule-name`...". Verify evolving features against version-specific official documentation; do not override newer authoritative evidence with an older rule.
 3. **If no rule exists:** Use the LLM's ClickHouse knowledge or search documentation
 4. **If uncertain:** Use web search for current best practices
 5. **Always cite your source:** rule name, "general ClickHouse guidance", or URL
@@ -48,7 +48,7 @@ Before querying ClickHouse, agents must establish a connection and follow the di
 If your system dispatches ClickHouse tasks to specialized subagents:
 - **Schema discovery + query execution**: any model — the steps are procedural
 - **EXPLAIN analysis + query optimization**: benefits from mid-tier reasoning
-- **Schema design review against all 28 rules**: benefits from mid-tier reasoning
+- **Schema design review against relevant rules**: benefits from mid-tier reasoning
 
 ---
 
@@ -90,6 +90,25 @@ If your system dispatches ClickHouse tasks to specialized subagents:
 - [ ] JOINs filter tables before joining (not after)
 - [ ] Correct JOIN algorithm for table sizes
 - [ ] Skipping indices for non-ORDER BY filter columns
+
+### For Text Search and Native Text-Index Reviews
+
+Read the relevant files directly:
+
+1. `rules/query-index-text-native.md` - Native postings, version baseline, granularity, legacy indexes
+2. `rules/query-index-text-semantics.md` - Full search operation map, correctness, phrases, and capability boundaries
+3. `rules/query-index-text-analysis.md` - Tokenizers, languages, normalization, stemming, and stop words
+4. `rules/query-index-text-plan.md` - Direct read, hints, fallback, and EXPLAIN evidence
+5. `rules/query-index-text-lifecycle.md` - Existing-part materialization and migration
+
+For any full-text-search question, establish the search contract (tokens, substrings, phrases, language, fields, ranking), deployed version/build, and indexed expression. Native text indexes store row-ID postings: their large granularity does not restrict them to part-level decisions. Eligible predicates can be exact, candidate hints, or ordinary pruning; preserve the original match semantics.
+
+Read these references for the relevant feature details:
+
+- [Full feature and analysis guide](references/text-search-feature-guide.md) — supported operations, data shapes, Map/JSON correlation, language tokenizers, parameters, settings, limitations, and operational choices.
+- [Version and evidence ledger](references/text-search-versions.md) — release gates, stable versus development capabilities, and resolved source conflicts.
+
+Do not promise native BM25/fuzzy ranking, universal language segmentation, same-element matches across arrays, phrase support for every tokenizer, or direct read for every supported predicate. Consult the operation map before designing a query. Check plan actions and historical-part coverage before recommending performance changes.
 
 ### For Insert Strategy Reviews (data ingestion, updates, deletes)
 
@@ -146,7 +165,7 @@ Structure your response as follows:
 | 4 | Insert Batching | CRITICAL | `insert-batch-` | 1 |
 | 5 | Mutation Avoidance | CRITICAL | `insert-mutation-` | 2 |
 | 6 | Partitioning Strategy | HIGH | `schema-partition-` | 4 |
-| 7 | Skipping Indices | HIGH | `query-index-` | 1 |
+| 7 | Secondary and Text Indices | HIGH | `query-index-` | 6 |
 | 8 | Materialized Views | HIGH | `query-mv-` | 2 |
 | 9 | Async Inserts | HIGH | `insert-async-` | 2 |
 | 10 | OPTIMIZE Avoidance | HIGH | `insert-optimize-` | 1 |
@@ -195,7 +214,12 @@ Structure your response as follows:
 
 ### Query Optimization - Indices (HIGH)
 
-- `query-index-skipping-indices` - Skipping indices for non-ORDER BY filters
+- `query-index-skipping-indices` - Conventional skipping indices for non-ORDER BY filters
+- `query-index-text-native` - Native text index and posting-list behavior
+- `query-index-text-semantics` - Preserve token, substring, phrase, value, and field semantics
+- `query-index-text-analysis` - Choose language/tokenization and processing deliberately
+- `query-index-text-plan` - Verify direct read, hints, fallback, and actual reads
+- `query-index-text-lifecycle` - Materialize existing parts and plan index migrations
 
 ### Query Optimization - Materialized Views (HIGH)
 
@@ -246,6 +270,7 @@ This skill activates when you encounter:
 - `ALTER TABLE` modifications
 - `ORDER BY` or `PRIMARY KEY` discussions
 - Data type selection questions
+- Native full-text search, `TYPE text`, tokenizers, LIKE, or token-search predicates
 - Slow query troubleshooting
 - JOIN optimization requests
 - Data ingestion pipeline design

@@ -1,9 +1,9 @@
 # ClickHouse Best Practices
 
-**Version 0.1.0**  
+**Version 0.5.0**  
 ClickHouse Inc  
-January 2026
-ClickHouse 24.1+
+November 2026
+ClickHouse 24.1+; native text-index guidance 26.2+ with per-feature version gates
 
 > **Note:**  
 > This document is mainly for agents and LLMs to follow when designing,  
@@ -15,7 +15,7 @@ ClickHouse 24.1+
 
 ## Abstract
 
-Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization.
+Comprehensive best practices for ClickHouse database optimization. Covers schema design, query optimization, table engines, indexing strategies, native full-text-search operations and analysis, materialized views, distributed operations, and operational best practices. Each rule includes detailed explanations, SQL examples comparing incorrect vs. correct implementations, and specific impact metrics to guide database design and query optimization.
 
 ---
 
@@ -37,14 +37,19 @@ Comprehensive best practices for ClickHouse database optimization. Covers schema
    - 1.13 [Use Native Types Instead of String](#113-use-native-types-instead-of-string)
    - 1.14 [Use Partitioning for Data Lifecycle Management](#114-use-partitioning-for-data-lifecycle-management)
 2. [Query Optimization](#2-query-optimization) — **CRITICAL**
-   - 2.1 [Choose the Right JOIN Algorithm](#21-choose-the-right-join-algorithm)
-   - 2.2 [Consider Alternatives to JOINs](#22-consider-alternatives-to-joins)
-   - 2.3 [Filter Tables Before Joining](#23-filter-tables-before-joining)
-   - 2.4 [Optimize NULL Handling in Outer JOINs](#24-optimize-null-handling-in-outer-joins)
-   - 2.5 [Use ANY JOIN When Only One Match Needed](#25-use-any-join-when-only-one-match-needed)
-   - 2.6 [Use Data Skipping Indices for Non-ORDER BY Filters](#26-use-data-skipping-indices-for-non-order-by-filters)
-   - 2.7 [Use Incremental MVs for Real-Time Aggregations](#27-use-incremental-mvs-for-real-time-aggregations)
-   - 2.8 [Use Refreshable MVs for Complex Joins and Batch Workflows](#28-use-refreshable-mvs-for-complex-joins-and-batch-workflows)
+   - 2.1 [Choose Text Analysis for the Data and Search Language](#21-choose-text-analysis-for-the-data-and-search-language)
+   - 2.2 [Choose the Right JOIN Algorithm](#22-choose-the-right-join-algorithm)
+   - 2.3 [Consider Alternatives to JOINs](#23-consider-alternatives-to-joins)
+   - 2.4 [Filter Tables Before Joining](#24-filter-tables-before-joining)
+   - 2.5 [Materialize Text Indexes and Verify Existing-Part Coverage](#25-materialize-text-indexes-and-verify-existing-part-coverage)
+   - 2.6 [Optimize NULL Handling in Outer JOINs](#26-optimize-null-handling-in-outer-joins)
+   - 2.7 [Preserve the Required Text Search Semantics](#27-preserve-the-required-text-search-semantics)
+   - 2.8 [Use ANY JOIN When Only One Match Needed](#28-use-any-join-when-only-one-match-needed)
+   - 2.9 [Use Data Skipping Indices for Non-ORDER BY Filters](#29-use-data-skipping-indices-for-non-order-by-filters)
+   - 2.10 [Use Incremental MVs for Real-Time Aggregations](#210-use-incremental-mvs-for-real-time-aggregations)
+   - 2.11 [Use Native Text Indexes for Text Search](#211-use-native-text-indexes-for-text-search)
+   - 2.12 [Use Refreshable MVs for Complex Joins and Batch Workflows](#212-use-refreshable-mvs-for-complex-joins-and-batch-workflows)
+   - 2.13 [Verify the Text Index Execution Path](#213-verify-the-text-index-execution-path)
 3. [Insert Strategy](#3-insert-strategy) — **CRITICAL**
    - 3.1 [Avoid ALTER TABLE DELETE](#31-avoid-alter-table-delete)
    - 3.2 [Avoid ALTER TABLE UPDATE](#32-avoid-alter-table-update)
@@ -799,9 +804,98 @@ Reference: [https://clickhouse.com/docs/best-practices/choosing-a-partitioning-k
 
 **Impact: CRITICAL**
 
-Query patterns dramatically affect performance. JOIN algorithms, filtering strategies, skipping indices, and materialized views can reduce query time from minutes to milliseconds. Pre-computed aggregations read thousands of rows instead of billions.
+Query patterns dramatically affect performance. JOIN algorithms, filtering strategies, skipping indices, native text indexes and search semantics, and materialized views can reduce query time from minutes to milliseconds. Pre-computed aggregations read thousands of rows instead of billions.
 
-### 2.1 Choose the Right JOIN Algorithm
+### 2.1 Choose Text Analysis for the Data and Search Language
+
+**Impact: HIGH (Keep document and query tokenization, normalization, and language behavior aligned)**
+
+Text analysis is part of the search schema. The pipeline is preprocessing of the whole value, tokenization, then optional token postprocessing. Changing it can change answers and index size. Discover the server version, `system.tokenizers`, and full index definition before selecting an analyzer.
+
+- **Deliberate ASCII token boundaries** — `splitByNonAlpha`: Splits at non-alphanumeric ASCII characters; not a general natural-language segmenter.
+
+- **Custom separators or extraction** — `splitByString`, `splitByRegexp`: Separator ordering/regex capture behavior changes tokens. Check deployed support and preview query needles as well as data.
+
+- **Substring-oriented candidates** — `ngrams(N)`, `sparseGrams(...)`: More or larger token sets change build/storage/query cost; not automatic edit-distance matching.
+
+- **Whole values or pre-tokenized elements** — `array` (`keyword` alias): Keeps each input value/array element as a token; useful for exact membership.
+
+- **Mixed ASCII/CJK text** — `asciiCJK`: Non-ASCII characters can become individual tokens; not Chinese/Japanese morphological segmentation. Older names include `unicodeWord`/`unicode_word`.
+
+- **Chinese words** — `chinese` (26.8+): Coarse/fine segmentation has different recall/storage tradeoffs; build support matters.
+
+- **Locale-aware segmentation** — `icu(locale)` (26.8+): Requires an explicit locale and an ICU-enabled build.
+
+- **Japanese morphology** — `japanese` (26.8+): Requires a configured MeCab dictionary; dictionary consistency across replicas matters.
+
+- **Map key/value pairs** — `keyValuePairs` (26.9+): Specialized map tokenizer with processing/operation restrictions; verify the exact stable-version surface.
+
+**Incorrect: assuming ASCII splitting provides language-aware segmentation**
+
+```sql
+-- This preview does not establish Chinese word segmentation.
+SELECT tokens('北京大学', 'splitByNonAlpha');
+```
+
+**Correct: discover support and preview the intended analysis**
+
+```sql
+SELECT version();
+SELECT * FROM system.tokenizers;
+SELECT tokens('Connection-timeout: retry', 'splitByNonAlpha');
+SELECT tokens(lowerUTF8('Connection-timeout: retry'), 'splitByNonAlpha');
+```
+
+**Correct: make normalization explicit in the search schema**
+
+```sql
+CREATE TABLE normalized_events
+(
+    id UInt64,
+    body String,
+    INDEX body_text body TYPE text(
+        tokenizer = splitByNonAlpha,
+        preprocessor = lowerUTF8(body)
+    )
+)
+ENGINE = MergeTree
+ORDER BY id;
+
+SELECT id FROM normalized_events
+WHERE hasAllTokens(body, 'Connection timeout')
+LIMIT 100;
+```
+
+Lowercasing is not automatically accent removal, Unicode normalization, transliteration, or locale-specific equivalence. Choose those transformations explicitly when required. A preprocessor can normalize/remove parts of the original text before tokenization; an arbitrary transformed expression need not remain equivalent to a raw LIKE predicate.
+
+**Correct: explicit token stemming on a release supporting postprocessing, 26.7+**
+
+```sql
+CREATE TABLE stemmed_events
+(
+    id UInt64,
+    body String,
+    INDEX body_text body TYPE text(
+        tokenizer = splitByNonAlpha,
+        preprocessor = lower(body),
+        postprocessor = stem(body, 'en')
+    )
+)
+ENGINE = MergeTree
+ORDER BY id;
+
+SELECT id FROM stemmed_events
+WHERE hasAllTokens(body, 'running')
+LIMIT 100;
+```
+
+`stem(word, language)` is a language-specific transformation, not lemmatization or a promise that every irregular form shares a stem. Check available languages and actual outputs. A postprocessor can drop tokens by returning an empty string, for example an explicit stop-word set. Dropped words cannot satisfy later searches; phrase positions can close over removed words. These are product semantics, not free performance optimizations.
+
+Token-search functions normalize both sides through compatible index analysis. Ordinary equality/array/map predicates retain their original value semantics even when analyzed tokens help locate candidates. Verify empty needles, nulls, punctuation, Unicode, array needles, and partially indexed data on the target version.
+
+Reference: [https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes#creating-a-text-index](https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes#creating-a-text-index), [https://github.com/ClickHouse/ClickHouse/blob/v26.10.4.207-stable/src/Interpreters/TokenizerFactory.cpp](https://github.com/ClickHouse/ClickHouse/blob/v26.10.4.207-stable/src/Interpreters/TokenizerFactory.cpp), [https://clickhouse.com/docs/sql-reference/functions/string-search-functions](https://clickhouse.com/docs/sql-reference/functions/string-search-functions)
+
+### 2.2 Choose the Right JOIN Algorithm
 
 **Impact: CRITICAL (Wrong algorithm causes OOM; right algorithm handles large tables efficiently)**
 
@@ -846,7 +940,7 @@ SELECT * FROM table_a a JOIN table_b b ON b.pk_col = a.pk_col;
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
-### 2.2 Consider Alternatives to JOINs
+### 2.3 Consider Alternatives to JOINs
 
 **Impact: CRITICAL (Dictionaries and denormalization shift work from query time to insert time)**
 
@@ -917,7 +1011,7 @@ JOIN customers c ON c.id = o.customer_id;
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
-### 2.3 Filter Tables Before Joining
+### 2.4 Filter Tables Before Joining
 
 **Impact: CRITICAL (Joining full tables then filtering wastes resources)**
 
@@ -965,7 +1059,45 @@ JOIN customers c ON c.id = o.customer_id;
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
-### 2.4 Optimize NULL Handling in Outer JOINs
+### 2.5 Materialize Text Indexes and Verify Existing-Part Coverage
+
+**Impact: HIGH (Avoid assuming newly declared indexes accelerate historical data)**
+
+Adding a text index changes table metadata and indexes newly written data. Existing parts need materialization before they benefit. Queries remain correct when some parts lack the index, but those parts can require scanning. Account for index build CPU, memory, disk, and mutation work before a large backfill. The reviewed implementation rejects materialization when a single part exceeds 4,294,967,295 rows; distinguish a large table from one oversized part.
+
+**Incorrect: assuming ADD INDEX has indexed all historical rows**
+
+```sql
+CREATE TABLE historical_events (id UInt64, body String)
+ENGINE = MergeTree ORDER BY id;
+
+ALTER TABLE historical_events
+ADD INDEX body_text_new body TYPE text(tokenizer = splitByNonAlpha);
+-- Index metadata exists; this alone does not prove historical-part coverage.
+```
+
+**Correct: materialize an added index and inspect completion**
+
+```sql
+ALTER TABLE historical_events MATERIALIZE INDEX body_text_new;
+
+SELECT mutation_id, command, is_done, parts_to_do, latest_fail_reason
+FROM system.mutations
+WHERE database = currentDatabase() AND table = 'historical_events'
+ORDER BY create_time DESC;
+```
+
+Materialization is asynchronous by default. For a deliberately synchronous operation, select an appropriate `mutations_sync` setting; `2` waits for all replicas and can take time. For large tables, plan partition-scoped materialization where appropriate and monitor resource use. Verify the actual query plan after completion and check relevant replicas rather than interpreting a metadata row as proof of completion.
+
+`CLEAR INDEX` removes index files in the selected scope while retaining the definition; `DROP INDEX` removes the definition. Extra tokens, ngrams, and optional positions increase build, merge, and storage work. Do not use `OPTIMIZE FINAL` as a generic index setup step.
+
+Treat a change to tokenizer, preprocessing, or postprocessing as a search-schema change: plan a rebuild or migration to the desired definition and test result semantics and coverage. Current stable rejects two text indexes with the same indexed expression output name, even if their tokenizer or preprocessor differs. Indexes on `body` and `lower(body)` are distinct expressions and can coexist, but queries must match the intended expression and semantics. A replacement on the same expression therefore needs a planned drop/add/materialize sequence or a separate-table migration; budget the period without coverage. Do not silently change token boundaries or normalize only one side of a query.
+
+Avoid copying experimental text-index storage settings or old `inverted` examples into current production DDL. Use version-specific upgrade/rebuild guidance when an existing index predates the current implementation. Newer optional features can have additional format or compatibility requirements even when basic `TYPE text` is generally available. The `pfor` posting-list codec is readable from 26.10, whose default remains `none`; do not explicitly enable it until every possible reader supports it. `text_index_serialization_version` is a preference, not a hard safety cap: explicit codec/position options can require a newer format. A `compatibility` pin does not override an explicitly selected codec.
+
+Reference: [https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes#creating-a-text-index](https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes#creating-a-text-index), [https://clickhouse.com/docs/sql-reference/statements/alter/skipping-index](https://clickhouse.com/docs/sql-reference/statements/alter/skipping-index), [https://clickhouse.com/docs/operations/system-tables/mutations](https://clickhouse.com/docs/operations/system-tables/mutations)
+
+### 2.6 Optimize NULL Handling in Outer JOINs
 
 **Impact: MEDIUM (Default values instead of NULL reduces memory overhead)**
 
@@ -995,7 +1127,73 @@ LEFT JOIN customers c ON c.id = o.customer_id;
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
-### 2.5 Use ANY JOIN When Only One Match Needed
+### 2.7 Preserve the Required Text Search Semantics
+
+**Impact: HIGH (Choose token, substring, phrase, or value predicates without changing results)**
+
+Identify what a search must match before choosing its predicate. Native text search supports several operations, with different meanings and acceleration paths. `TYPE text` is generally available from 26.2; that does not make every later search capability available on every GA release.
+
+- **Any token / all tokens** — `hasAnyTokens` / `hasAllTokens`: OR / AND over tokens; order, adjacency, and repeated-token counts are not required.
+
+- **One token** — `hasToken`: Text-index use requires splitByNonAlpha; any/all is preferable for configurable analysis.
+
+- **Substring** — `LIKE '%connect%'` or the intended string predicate: Includes substrings within larger words. Do not replace with token membership.
+
+- **Prefix / suffix** — `startsWith`, `endsWith`, or corresponding LIKE: Preserves position within the original value; eligible pruning/dictionary paths depend on version and tokenizer.
+
+- **Case-insensitive pattern** — `ILIKE`: Current text-index dictionary support has specific tokenizer/processing restrictions. It is not a blanket case-insensitive-index switch.
+
+- **Regular expression** — `match`, eligible multi-match functions: Original regex semantics remain; token extraction may prune candidates. Do not claim every regex or a fuzzy predicate is indexed.
+
+- **Ordered consecutive tokens** — `hasPhrase` (26.4+): Phrase semantics, not byte-for-byte substring semantics. Position storage for exact index evaluation is a separate experimental 26.7+ option.
+
+- **Exact value / set membership** — `=`, `IN`, array `has`/`hasAny`/`hasAll`: Keep value/element semantics. Whole-value `array` tokenization can make selected predicates exact; other cases retain verification.
+
+- **Map key, value, or pair** — Correct `mapKeys`/`mapValues` expression, or supported `keyValuePairs` lookup: Key and value existing somewhere in the same map do not prove they belong to the same pair.
+
+- **Relevance, fuzzy matching, Lucene syntax** — Establish a separate capability or application layer: The native text index does not itself return BM25 scores, fuzzy ranking, or parse Lucene query strings.
+
+**Incorrect: replacing a substring requirement with token membership**
+
+```sql
+-- Requirement includes 'reconnection' because it contains 'connect'.
+SELECT id FROM search_events
+WHERE hasToken(body, 'connect');
+```
+
+**Correct: preserve the substring requirement**
+
+```sql
+SELECT id FROM search_events
+WHERE body LIKE '%connect%'
+LIMIT 100;
+```
+
+**Correct: distinguish token conjunction from phrase search on 26.4+**
+
+```sql
+-- Matches reversed order and separated occurrences too.
+SELECT id FROM search_events
+WHERE hasAllTokens(body, 'connection timeout')
+LIMIT 100;
+
+-- Requires the analyzed tokens consecutively in that order.
+SELECT id FROM search_events
+WHERE hasPhrase(body, 'connection timeout')
+LIMIT 100;
+```
+
+With a compatible text index, string needles for any/all token search use its configured analysis. Array needles are already tokens: they bypass preprocessing and tokenization; configured postprocessing can still apply. Empty or entirely dropped needle tokens return false for both any/all functions. Needles must be constant String or Array(String). Any/all search on an array-valued haystack can match tokens across separate elements of the same row. Do not infer phrase or same-element matching from that result.
+
+From 26.10, phrase search also accepts supported string-array haystacks and constant Array(String) needles. Array needle elements are ordered tokens (including duplicates): preprocessing/tokenization is bypassed, while postprocessing can still apply. Haystack tokens form one sequence per row, so a phrase can span array elements. An array-valued text index supplies candidates and retains phrase verification even with stored positions; exact positional direct read is limited to non-array indexed columns. Phrase matching follows analyzed tokens: separators can differ, and removing stop words can make formerly separated tokens adjacent. Test the intended phrase meaning before selecting a postprocessor.
+
+SQL `AND`/`OR` can combine predicates. A Boolean combination does not guarantee every branch has an index path. A negative predicate can still execute as SQL, but negative-only search is not guaranteed to get useful posting-list pruning. `hasTokenCaseInsensitive` variants are not native text-index-aware; use an intentional normalized token-search design for that requirement.
+
+Before performance comparisons, verify equal result sets. On older builds, disabling skip-index analysis or moving token functions outside WHERE/PREWHERE can change inherited preprocessing. The relevant fix is present in the initial 26.8 release; verify the deployed patch rather than assuming `use_skip_indexes = 0` is always neutral.
+
+Reference: [https://clickhouse.com/docs/sql-reference/functions/string-search-functions](https://clickhouse.com/docs/sql-reference/functions/string-search-functions), [https://github.com/ClickHouse/ClickHouse/blob/v26.10.4.207-stable/src/Storages/MergeTree/MergeTreeIndexConditionText.cpp](https://github.com/ClickHouse/ClickHouse/blob/v26.10.4.207-stable/src/Storages/MergeTree/MergeTreeIndexConditionText.cpp), [https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes](https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes)
+
+### 2.8 Use ANY JOIN When Only One Match Needed
 
 **Impact: HIGH (Returns first match only; less memory and faster execution)**
 
@@ -1033,13 +1231,15 @@ LEFT ANY JOIN customers c ON c.id = o.customer_id;
 
 Reference: [https://clickhouse.com/docs/best-practices/minimize-optimize-joins](https://clickhouse.com/docs/best-practices/minimize-optimize-joins)
 
-### 2.6 Use Data Skipping Indices for Non-ORDER BY Filters
+### 2.9 Use Data Skipping Indices for Non-ORDER BY Filters
 
 **Impact: HIGH (Up to 60x faster queries by skipping irrelevant granules)**
 
-Queries filtering on columns not in ORDER BY cannot use the primary index and result in full scans. Data skipping indices store metadata about blocks and skip granules that definitely don't match.
+Filters on columns outside ORDER BY often need an additional access path to avoid scanning candidate data. Conventional data skipping indices store summaries for blocks and skip granules that definitely do not match. Their usefulness depends on the predicate and the distribution of values within blocks.
 
-**Important:** Skip indices should be considered **after** optimizing data types, primary key selection, and materialized views.
+Native `TYPE text` indexes additionally store token-to-row-ID posting lists. For text search, read `query-index-text-native`, `query-index-text-semantics`, and `query-index-text-plan`; do not apply block-summary selectivity or GRANULARITY advice to text indexes without checking their execution path.
+
+**Important:** Evaluate conventional skipping indices alongside the table's data types, primary key, and workload. Native text indexes are a purpose-built access path for text search and should be considered during search schema design.
 
 **When to use:**
 
@@ -1053,7 +1253,7 @@ Queries filtering on columns not in ORDER BY cannot use the primary index and re
 
 - As a first optimization step
 
-- Matching values scattered across many blocks
+- Conventional block-summary indexes when nearly every block contains a match
 
 - Without testing on real data
 
@@ -1102,9 +1302,11 @@ ALTER TABLE events MATERIALIZE INDEX idx_user_id;
 
 | `minmax` | Range queries | `WHERE amount > 1000` |
 
-| `ngrambf_v1` | Text search | `WHERE text LIKE '%term%'` |
+| `text` | Native text search; GA in 26.2+ | `WHERE hasAllTokens(text, 'connection timeout')` |
 
-| `tokenbf_v1` | Token search | `WHERE hasToken(text, 'word')` |
+| `ngrambf_v1`, `tokenbf_v1` | Deprecated legacy text-search indexes; inspect compatibility before migrating | Existing deployments only |
+
+The deprecation applies to the two legacy text index types, not to the generic `bloom_filter` index. Predicate support and direct-read eligibility for `text` depend on tokenizer and version; see the dedicated rules.
 
 **Validation:**
 
@@ -1114,9 +1316,9 @@ SELECT * FROM events WHERE user_id = 12345;
 -- Look for "Skip" in output showing granules skipped
 ```
 
-Reference: [https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate](https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate)
+Reference: [https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate](https://clickhouse.com/docs/best-practices/use-data-skipping-indices-where-appropriate), [https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes](https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes)
 
-### 2.7 Use Incremental MVs for Real-Time Aggregations
+### 2.10 Use Incremental MVs for Real-Time Aggregations
 
 **Impact: HIGH (Read thousands of rows instead of billions; minimal cluster overhead)**
 
@@ -1181,7 +1383,58 @@ GROUP BY event_type, hour;
 
 Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](https://clickhouse.com/docs/best-practices/use-materialized-views)
 
-### 2.8 Use Refreshable MVs for Complex Joins and Batch Workflows
+### 2.11 Use Native Text Indexes for Text Search
+
+**Impact: HIGH (Find matching row IDs without scanning every text value)**
+
+For token search on MergeTree tables, evaluate `TYPE text` on ClickHouse 26.2 or newer, where it is generally available. Discover the server version and existing index definition first. Older experimental text-index implementations and formats require their own version-specific guidance.
+
+A text index accepts one supported string or string-array expression, including supported Nullable/LowCardinality wrappers. Query expressions must match the indexed expression in a supported form. Combined fields or arrays can lose field/element boundaries; retain explicit conditions when those boundaries matter.
+
+A text index stores token dictionaries and posting lists of row IDs. It appears under `Skip` in EXPLAIN and in `system.data_skipping_indices`, but its information is finer than a conventional block-summary skipping index. Posting lists can prune granules, supply exact token-match filters, or provide candidate filters that still require checking the original text.
+
+Do not diagnose a large text-index `GRANULARITY` as part-only filtering. Current text indexes use a fixed `100000000` granularity; supplied values are ignored. This gives the index broad scope within each part while preserving row IDs. The table's `index_granularity`, selected mark ranges, compressed data reads, and posting-list row IDs are different concepts. Omit `GRANULARITY` in new text-index examples.
+
+**Incorrect: defaulting to legacy Bloom-filter token search on a supported release**
+
+```sql
+CREATE TABLE search_events_legacy
+(
+    id UInt64,
+    body String,
+    INDEX body_tokens body TYPE tokenbf_v1(10240, 3, 0) GRANULARITY 1
+)
+ENGINE = MergeTree
+ORDER BY id;
+```
+
+**Correct: evaluate a native text index for token membership**
+
+```sql
+CREATE TABLE search_events
+(
+    id UInt64,
+    body String,
+    INDEX body_text body TYPE text(tokenizer = splitByNonAlpha)
+)
+ENGINE = MergeTree
+ORDER BY id;
+
+SELECT id
+FROM search_events
+WHERE hasAllTokens(body, 'connection timeout')
+LIMIT 100;
+```
+
+This query requires both tokens, in any order. It does not require an adjacent phrase. Choose tokenization and normalization to match the intended search semantics; see `query-index-text-semantics`.
+
+For eligible predicates, direct read evaluates the text predicate using posting lists and avoids reading the indexed text column solely to evaluate that predicate. Selecting `body`, evaluating residual predicates, or aggregating other columns can still require base-column reads. Row-ID precision does not promise one physical disk read per matching row.
+
+`tokenbf_v1` and `ngrambf_v1` are documented as deprecated for new text-search designs. This does not mean existing indexes have been removed or that the generic `bloom_filter` index is deprecated. Keep legacy compatibility decisions explicit and verify the deployed version before migrating.
+
+Reference: [https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes](https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes), [https://clickhouse.com/docs/engines/table-engines/mergetree-family/mergetree#skip-index-types](https://clickhouse.com/docs/engines/table-engines/mergetree-family/mergetree#skip-index-types), [https://clickhouse.com/blog/full-text-search-ga-release](https://clickhouse.com/blog/full-text-search-ga-release)
+
+### 2.12 Use Refreshable MVs for Complex Joins and Batch Workflows
 
 **Impact: HIGH (Sub-millisecond queries with periodic refresh; ideal for complex joins)**
 
@@ -1245,6 +1498,66 @@ SELECT * FROM orders_denormalized WHERE segment = 'enterprise';
 **Critical warning:** Query should run quickly compared to refresh interval. Don't schedule every 10 seconds if the query takes 10+ seconds.
 
 Reference: [https://clickhouse.com/docs/best-practices/use-materialized-views](https://clickhouse.com/docs/best-practices/use-materialized-views)
+
+### 2.13 Verify the Text Index Execution Path
+
+**Impact: HIGH (Distinguish exact posting-list filters, candidate hints, and scan fallback)**
+
+Inspect the actual query plan and representative reads before claiming an index will make a query efficient. Native text indexes have three useful execution behaviors: exact posting-list evaluation, a candidate hint plus the original predicate, and conventional granule skipping followed by predicate evaluation. Parts without the index can also require scans.
+
+**Incorrect: treating index presence or granularity as proof of the execution path**
+
+```sql
+SELECT name, type_full, expr, granularity
+FROM system.data_skipping_indices
+WHERE database = currentDatabase() AND table = 'search_events';
+-- This metadata alone does not establish direct read, selectivity, or coverage.
+```
+
+**Correct: inspect both actions and index pruning**
+
+```sql
+SELECT version();
+
+EXPLAIN PLAN actions = 1, indexes = 1
+SELECT count()
+FROM search_events
+WHERE hasAllTokens(body, 'connection timeout');
+
+SELECT name, value, default
+FROM system.settings
+WHERE name IN
+(
+    'use_skip_indexes',
+    'use_skip_indexes_on_data_read',
+    'query_plan_direct_read_from_text_index',
+    'query_plan_optimize_count_from_text_index',
+    'query_plan_text_index_add_hint',
+    'text_index_hint_max_selectivity'
+)
+ORDER BY name;
+```
+
+Look for a `__text_index_...` virtual filter and the expressions/columns read. An eligible count-only query can instead use `ReadFromTextIndexCount` (shown as a trivial count from the text index); absence of a virtual filter in that plan is not evidence of a scan. Discover `query_plan_optimize_count_from_text_index` when diagnosing that path. An exact index predicate can replace the original text predicate; a hint keeps the original predicate and adds a candidate filter. `Skip` identifies the index and reports parts/granules, but does not by itself prove direct read or that the raw text was avoided. A count query and a query returning the text column have different read requirements.
+
+Current defaults enable `query_plan_direct_read_from_text_index` and `query_plan_text_index_add_hint`. Hinting depends on direct read. For releases before 26.4, the documented direct-read path additionally requires `use_skip_indexes_on_data_read = 1`. Discover effective settings instead of overriding them indiscriminately.
+
+**Correct: compare with conventional index filtering while preserving the predicate**
+
+```sql
+EXPLAIN PLAN actions = 1, indexes = 1
+SELECT count()
+FROM search_events
+WHERE hasAllTokens(body, 'connection timeout')
+SETTINGS query_plan_direct_read_from_text_index = 0,
+         query_plan_text_index_add_hint = 0;
+```
+
+For a controlled performance comparison, first verify identical result sets. Use representative terms, cold/warm conditions, projected columns, and the same data snapshot; inspect elapsed time, `read_rows`, `read_bytes`, and relevant ProfileEvents in `system.query_log` when available. Keep benchmark settings local to the comparison.
+
+Low text-index pruning does not automatically imply no benefit: row filters may still avoid text reads or downstream work. Conversely, a common token can produce a large posting list, and returning wide text for many matches can dominate I/O. Do not infer physical bytes or a universal speedup from posting-list precision, granule counts, or a small synthetic example.
+
+Reference: [https://clickhouse.com/docs/sql-reference/statements/explain](https://clickhouse.com/docs/sql-reference/statements/explain), [https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes#direct-read](https://clickhouse.com/docs/reference/engines/table-engines/mergetree-family/textindexes#direct-read), [https://clickhouse.com/docs/operations/system-tables/query_log](https://clickhouse.com/docs/operations/system-tables/query_log)
 
 ---
 
@@ -1329,9 +1642,9 @@ Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://
 
 ### 3.2 Avoid ALTER TABLE UPDATE
 
-**Impact: CRITICAL (Mutations rewrite entire parts; use ReplacingMergeTree instead)**
+**Impact: CRITICAL (Use lightweight UPDATE or ReplacingMergeTree instead)**
 
-`ALTER TABLE UPDATE` is a mutation - an asynchronous background process that rewrites entire data parts affected by the change. This is extremely expensive for frequent or large-scale operations.
+`ALTER TABLE UPDATE` is a mutation that rewrites entire data parts affected by the change. Use alternatives like lightweight UPDATE or ReplacingMergeTree.
 
 **Why mutations are problematic:**
 
@@ -1343,7 +1656,7 @@ Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://
 
 - **Inconsistent reads:** SELECT may read mix of mutated and unmutated parts
 
-**Incorrect: mutation for updates**
+**Incorrect: mutation update**
 
 ```sql
 -- Rewrites potentially huge amounts of data
@@ -1356,10 +1669,9 @@ WHERE product_id = 123;
 -- If product exists across 100 parts, rewrites ALL 100 parts
 ```
 
-**Correct: ReplacingMergeTree**
+**Correct - ReplacingMergeTree:**
 
 ```sql
--- Table design for updates
 CREATE TABLE users (
     user_id UInt64,
     name String,
@@ -1380,6 +1692,27 @@ SELECT * FROM users FINAL WHERE user_id = 123;
 SELECT user_id, argMax(status, updated_at) as status
 FROM users GROUP BY user_id;
 ```
+
+**Correct - Lightweight Updates (25.7+):**
+
+```sql
+-- Writes a patch, doesn't rewrite parts immediately
+UPDATE users SET status = 'inactive'
+WHERE last_login < now() - INTERVAL 90 DAY;
+-- Patches are applied during normal merges
+```
+
+**Update strategy comparison:**
+
+| Method | Speed | When to Use |
+
+|--------|-------|-------------|
+
+| ALTER UPDATE | Slow | Rare corrections only |
+
+| ReplacingMergeTree | Fast | Frequent updates |
+
+| Lightweight UPDATE | Medium | Occasional updates |
 
 Reference: [https://clickhouse.com/docs/best-practices/avoid-mutations](https://clickhouse.com/docs/best-practices/avoid-mutations)
 
@@ -1801,7 +2134,7 @@ Reference: [https://github.com/ClickHouse/mcp-clickhouse](https://github.com/Cli
 
 **Impact: CRITICAL (Skipping schema discovery leads to full scans, wrong columns, and wasted compute)**
 
-ALWAYS start by understanding the schema. Never assume table or column names. Agents that skip schema discovery write queries that scan unnecessary data, use wrong column names, or miss the sort key — all of which burn compute and return bad results.
+ALWAYS start by understanding the schema. Never assume table or column names. Agents that skip schema discovery write queries that scan unnecessary data, use wrong column names, or miss the sort key — all of which burn compute and return bad results. The below queries are examples of how you access the schema for tables. Step 1 is a literal query. The rest are exemplars.
 
 **Step 1: List databases**
 
@@ -1815,11 +2148,11 @@ This tells you which tables are large (and therefore expensive to scan carelessl
 
 **Step 4: Understand the sort key**
 
-This is the most important step for writing efficient queries. Filtering on sort key columns allows ClickHouse to skip entire data granules. Filtering on non-key columns forces a full scan.
+Filtering on suitable sort-key expressions can prune data granules. Filters on other columns may use secondary indexes or other access paths, so inspect those before estimating a scan.
 
-**Step 5: Check for skipping indexes**
+**Step 5: Inspect secondary indexes and server version**
 
-Skipping indexes (`bloom_filter`, `minmax`, `set`, `tokenbf_v1`) tell you which non-sort-key columns already have optimized filter paths. If an index exists on a column, filtering on it is efficient even though it's not in the sort key. Missing this step means you won't know which "non-key" filters are actually fast.
+Index metadata identifies possible access paths, not guaranteed efficiency. Check expression matching, predicate support, settings, data distribution, and existing-part coverage. `TYPE text` appears in this system table but stores posting-list row IDs; read `query-index-text-native`, `query-index-text-semantics`, and `query-index-text-plan` when it is present or text search is requested. A large text-index granularity does not imply only part-level filtering. Use SHOW CREATE TABLE to inspect the full definition, including tokenization and normalization.
 
 **Step 6: Sample data**
 
@@ -1833,9 +2166,11 @@ Look for:
 
 - **Keys** section showing your sort key columns are being used for filtering
 
-- **Parts** and **Granules** counts — if these are not significantly reduced from the total, your filters aren't pruning effectively
+- **Parts** and **Granules** counts showing pruning at those levels
 
-- **Skip** entries showing data skipping index usage
+- **Skip** entries identifying secondary indexes
+
+- For `TYPE text`, use `EXPLAIN PLAN actions = 1, indexes = 1` and inspect virtual text-index filters and residual predicates; granule counts alone do not establish direct read or the cost of reading text
 
 For a quick cost estimate without running the query:
 
