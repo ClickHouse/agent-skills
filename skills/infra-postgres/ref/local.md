@@ -34,9 +34,9 @@ Useful options:
 - `--port`, `--user`, `--password`, `--database` — override defaults
 - `-e KEY=VALUE` — extra container env vars (repeatable; `POSTGRES_USER`, `POSTGRES_DB` and `PGDATA` are rejected — use the flags)
 
-Starting a stopped instance resumes it with its stored settings, so `--port`, `--user`, `--password`, `--database` and `-e` are ignored on a resume.
+Starting a stopped instance resumes it with its stored settings, so `--port`, `--user`, `--password`, `--database` and `-e` are ignored on a resume. If another process now holds the stored port, the resume fails with `port_in_use`; free the port and start again.
 
-Data persists across restarts at `.clickhouse/servers/<name>-pg<major>/data/` in the project directory. Instances are per-project (keyed on the exact working directory — run commands from the project root).
+Data persists across restarts at `.clickhouse/servers/<name>-pg<major>/data/` in the project directory. Instances are per-project: after `clickhousectl local init`, commands find the project from any subdirectory by walking up to the nearest `.clickhouse/`. `dotenv` writes its file in the current directory, so run that one from the project root.
 
 ## Step 2: Run SQL
 
@@ -62,7 +62,7 @@ Interactive psql session (only when the user asks for one — it blocks the term
 clickhousectl local postgres client default
 ```
 
-Extra psql arguments pass through after `--`. Output stays in psql's native format, even with `--json`.
+A `--queries-file` (or piped stdin) stops at the first failed statement and exits 3; pass `-- -v ON_ERROR_STOP=0` to keep going past errors. Extra psql arguments pass through after `--`. Output stays in psql's native format, even with `--json`.
 
 ## Step 3: Wire up the application
 
@@ -77,13 +77,14 @@ This writes `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWOR
 ## Managing local instances
 
 ```bash
-clickhousectl local server list          # lists ClickHouse and Postgres instances together
+clickhousectl local postgres list            # Postgres instances in this project, running and stopped
+clickhousectl local status                   # ClickHouse and Postgres instances together
 clickhousectl local postgres stop <name>
 clickhousectl local postgres stop-all
 clickhousectl local postgres remove <name>   # stopped instances only; deletes the data directory too
 ```
 
-There is no `local postgres list`; `local server list` shows both engines. `stop` keeps data for a later `start`; `remove` is irreversible — confirm with the user before removing an instance that may hold data they care about. Use `-v <version>` with `stop`/`remove`/`client`/`dotenv` to disambiguate when one name has two major versions.
+Commands that take a name fall back to `default`, else the project's only instance, when it is omitted; `remove` without a name removes only `default`. `stop` keeps data for a later `start`; `remove` is irreversible — confirm with the user before removing an instance that may hold data they care about. Use `-v <version>` with `stop`/`remove`/`client`/`dotenv` to disambiguate when one name has two major versions.
 
 ## Going to production
 

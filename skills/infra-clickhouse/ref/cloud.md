@@ -30,7 +30,7 @@ Guide the user through creating one in the ClickHouse Cloud console:
 > 2. Go to **API Keys**
 > 3. Click **Create API Key**
 > 4. Give it a name (e.g., "clickhousectl")
-> 5. Select the **Admin** role for the key. On first use, `cloud service query` binds this API key to the service's Query API endpoint, which needs permission to view API keys and manage query endpoints. Developer-scoped keys can manage services but may not be able to complete that step.
+> 5. Select the **Admin** role for the key. On first use, `cloud clickhouse query` binds this API key to the service's Query API endpoint, which needs permission to view API keys and manage query endpoints. Developer-scoped keys can manage services but may not be able to complete that step.
 > 6. Click **Generate API Key**
 > 7. **Copy both the Key ID and the Key Secret** — the secret is only shown once
 
@@ -58,29 +58,29 @@ clickhousectl cloud auth whoami
 Create a new ClickHouse Cloud service:
 
 ```bash
-clickhousectl cloud service create --name <service-name>
+clickhousectl cloud clickhouse create --name <service-name> --dotenv .env.admin
 ```
 
-The defaults are `--provider aws --region us-east-1`; pass `--provider` (`aws`, `gcp`, `azure`) and `--region` to choose another location. Omitting `--ip-allow` opens the service to all addresses (`0.0.0.0/0`) — for production, pass `--ip-allow <IP_OR_CIDR>` (repeatable) for each address range that needs access.
+The defaults are `--provider aws --region us-east-1`; pass `--provider` (`aws`, `gcp`, `azure`) and `--region` to choose another location. Omitting `--ip-allow` opens the service to all addresses (`0.0.0.0/0`) — for production, pass `--ip-allow <IP_OR_CIDR>` (repeatable) for each address range that needs access, and consider `--deletion-protection`, which makes `delete` fail until it is turned off with `cloud clickhouse update <id> --deletion-protection false`.
 
-The output contains the `default` user's password, which is **printed only once**. Save it straight away, e.g. as `CLICKHOUSE_ADMIN_PASSWORD` in `.env`; `cloud service reset-password <service-id>` issues a new one if it is lost. Also add the HTTPS host and port to `.env` as `CLICKHOUSE_HOST` and `CLICKHOUSE_PORT`. Make sure `.env` is gitignored.
+The `default` user's password is returned **only once**. `--dotenv .env.admin` writes it to that file with the connection settings (`CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_HTTP_PORT`, `CLICKHOUSE_USER=default`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_SECURE`) instead of printing it. Keeping these admin credentials in their own file stops them being mixed up with the application's user in Step 6. Make sure `.env.admin` is gitignored. If the password is lost, `cloud clickhouse reset-password <service-id>` issues a new one.
 
 `create` returns before the service is up. Poll until the service state is `running` (this takes a few minutes):
 
 ```bash
-clickhousectl cloud service get <service-id>
+clickhousectl cloud clickhouse get <service-id>
 ```
 
 ## Step 4: Migrate schemas
 
 If the user has local table definitions (e.g., from the local workflow in [local.md](local.md)), migrate them to the cloud service.
 
-Use `cloud service query` to run SQL against the cloud service over HTTP. Pass the service name with `--name`, or the service ID. Each call runs **one SQL statement**: `--query` takes one statement, and a `--queries-file` must contain exactly one. Split files with several statements before applying them.
+Use `cloud clickhouse query` to run SQL against the cloud service over HTTP. Pass the service name with `--name`, or the service ID. Each call runs **one SQL statement**: `--query` takes one statement, and a `--queries-file` must contain exactly one. Split files with several statements before applying them.
 
 **Read the local schema files** from `clickhouse/tables/` and apply each one to the cloud service:
 
 ```bash
-clickhousectl cloud service query --name <service-name> \
+clickhousectl cloud clickhouse query --name <service-name> \
   --queries-file clickhouse/tables/<table>.sql
 ```
 
@@ -89,45 +89,55 @@ Apply them in dependency order — tables referenced by materialized views shoul
 **Also apply materialized views** if they exist:
 
 ```bash
-clickhousectl cloud service query --name <service-name> \
+clickhousectl cloud clickhouse query --name <service-name> \
   --queries-file clickhouse/materialized_views/<view>.sql
 ```
 
-To target a specific database, pass `--database <name>`. A query that times out is not retried — check whether the statement took effect before re-running it.
+To target a specific database, pass `--database <name>`; to choose the output format, pass `--format` (e.g. `JSONEachRow`). A query that times out is not retried — check whether the statement took effect before re-running it.
+
+For an interactive SQL session, the user can run `clickhousectl cloud clickhouse client --name <service-name>` themselves: it opens clickhouse-client signed in as their Cloud user through a browser, so it needs a person and ClickHouse 25.12+ installed locally. Agents should use `cloud clickhouse query`.
 
 ## Step 5: Verify the deployment
 
 Connect to the cloud service and confirm tables exist:
 
 ```bash
-clickhousectl cloud service query --name <service-name> --query "SHOW TABLES"
+clickhousectl cloud clickhouse query --name <service-name> --query "SHOW TABLES"
 ```
 
 Run a test query to confirm the schema is correct:
 
 ```bash
-clickhousectl cloud service query --name <service-name> --query "DESCRIBE TABLE <table-name>"
+clickhousectl cloud clickhouse query --name <service-name> --query "DESCRIBE TABLE <table-name>"
 ```
 
 ## Step 6: Create a dedicated user for the application
 
 The `default` user has full admin rights and should not be used by the application. Create a dedicated user scoped to the schema deployed in Step 4.
 
-Generate a strong random password and append the credentials to `.env` **before** creating the user, so the password is persisted even if a subsequent step fails:
+First write the service's connection settings to the application's `.env`. `dotenv` never writes a password, and it sets `CLICKHOUSE_USER=default`, which the next step replaces:
+
+```bash
+clickhousectl cloud clickhouse dotenv --name <service-name>
+```
+
+This writes `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (native TLS), `CLICKHOUSE_HTTP_PORT` (HTTPS), `CLICKHOUSE_USER` and `CLICKHOUSE_SECURE`, replacing only those keys in an existing file (`--local` writes `.env.local` instead). Make sure the file is gitignored.
+
+Generate a strong random password and write the app user's credentials to `.env` **before** creating the user, so the password is persisted even if a subsequent step fails. Run the rest of this step in the same shell so `$PASSWORD` stays set:
 
 ```bash
 PASSWORD=$(openssl rand -base64 32)
-echo "CLICKHOUSE_USER=app_user" >> .env
-echo "CLICKHOUSE_PASSWORD=$PASSWORD" >> .env
+grep -v -e '^CLICKHOUSE_USER=' -e '^CLICKHOUSE_PASSWORD=' .env > .env.tmp && mv .env.tmp .env
+printf 'CLICKHOUSE_USER=app_user\nCLICKHOUSE_PASSWORD=%s\n' "$PASSWORD" >> .env
 ```
 
 Then create the user and grant the minimum permissions the app needs. Replace `<database>` with the database the schema lives in (often `default`):
 
 ```bash
-clickhousectl cloud service query --name <service-name> --query \
+clickhousectl cloud clickhouse query --name <service-name> --query \
   "CREATE USER app_user IDENTIFIED BY '$PASSWORD'"
 
-clickhousectl cloud service query --name <service-name> --query \
+clickhousectl cloud clickhouse query --name <service-name> --query \
   "GRANT SELECT, INSERT ON <database>.* TO app_user"
 ```
 
@@ -140,7 +150,7 @@ Adjust the grants to fit the app:
 Verify the user exists and has the expected grants:
 
 ```bash
-clickhousectl cloud service query --name <service-name> --query "SHOW GRANTS FOR app_user"
+clickhousectl cloud clickhouse query --name <service-name> --query "SHOW GRANTS FOR app_user"
 ```
 
 ClickHouse cannot reveal the password later, so if `.env` is lost, the user must reset the password via `ALTER USER app_user IDENTIFIED BY '<new>'`.
