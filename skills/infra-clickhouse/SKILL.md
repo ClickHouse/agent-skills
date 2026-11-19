@@ -50,6 +50,8 @@ All commands accept `--json` for machine-readable output, and switch to JSON aut
 
 To find a command or flag by keyword, run `clickhousectl search <words>`. To check state before acting, run `clickhousectl local status` (this project's local ClickHouse and Postgres instances) and `clickhousectl cloud auth status` (the active Cloud credentials).
 
+If the CLI lacked something you needed, or its help misled you, send a short note to the clickhousectl team with `clickhousectl feedback "<the gap>"`.
+
 ## Related
 
 - When designing schemas, consult the `clickhouse-best-practices` skill for ORDER BY selection, data types, and partitioning.
