@@ -33,22 +33,24 @@ clickhouse/
   udfs/                   # Executable UDFs
 ```
 
-It is idempotent — re-running only creates what is missing. Project commands use `.clickhouse/` in the exact current directory, so run every `clickhousectl local` command from the project root.
+It is idempotent — re-running only creates what is missing. Later `clickhousectl local` commands find the project from any subdirectory by walking up to the nearest `.clickhouse/`. `dotenv` writes its file in the current directory, so run that one from the project root.
 
 **Note:** This step is optional. If the user already has their own folder structure for SQL files, skip this and adapt the later steps to use their paths.
 
 ## Step 3: Start a local server
 
 ```bash
-clickhousectl local server start <name>
+clickhousectl local clickhouse start <name>
 ```
 
-This starts a ClickHouse server in the background and waits up to 30 seconds for it to accept connections. The name is optional: without one it is `default`, or a generated name if `default` is already running — keep the name it prints for later commands. HTTP and TCP ports default to 8123 and 9000, or free ports if those are taken.
+This starts a ClickHouse server in the background and waits up to 30 seconds for it to accept connections. The name is optional: without one it is `default`, or a generated name if `default` is already running — keep the name it prints for later commands. HTTP and TCP ports default to 8123 and 9000, or free ports if those are taken. Restarting a stopped server reuses the ClickHouse version it last ran; pass `--version` to move it to another one.
 
-**To check running servers and see their exposed ports:**
+Later commands that take a name (`client`, `stop`, `dotenv`) fall back to `default`, else the project's only server, when it is omitted.
+
+**To check servers and see their exposed ports:**
 
 ```bash
-clickhousectl local server list
+clickhousectl local status   # ClickHouse and Postgres instances in this project
 ```
 
 ## Step 4: Create the schema
@@ -121,7 +123,7 @@ Output is clickhouse-client's native format. To choose one, pass it after `--`, 
 Write the server's connection details to `.env` (or `.env.local` with `--local`):
 
 ```bash
-clickhousectl local server dotenv <name>
+clickhousectl local clickhouse dotenv <name>
 ```
 
 This writes `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, and `CLICKHOUSE_HTTP_PORT` from the running server's actual ports, replacing those keys in place. Add `--user`, `--password`, or `--database` to also write `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, or `CLICKHOUSE_DATABASE`. Make sure the file is gitignored, then have the application read these variables.
@@ -129,13 +131,13 @@ This writes `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, and `CLICKHOUSE_HTTP_PORT` fro
 ## Managing local servers
 
 ```bash
-clickhousectl local server list          # all servers in this project, with their ports
-clickhousectl local server stop <name>
-clickhousectl local server stop-all      # stops ClickHouse and Postgres servers in this project
-clickhousectl local server remove <name> # stopped servers only; deletes the server's data
+clickhousectl local clickhouse list          # ClickHouse servers in this project, running and stopped
+clickhousectl local clickhouse stop <name>
+clickhousectl local clickhouse stop-all      # ClickHouse servers only; `local postgres stop-all` for Postgres
+clickhousectl local clickhouse remove <name> # stopped servers only; deletes the server's data
 ```
 
-`stop` keeps data for a later `start`; `remove` is irreversible — confirm with the user before removing a server that may hold data they care about.
+`stop` keeps data for a later `start`; `remove` without a name removes only `default`, never another server. `remove` is irreversible — confirm with the user before removing a server that may hold data they care about.
 
 ## Going to production
 

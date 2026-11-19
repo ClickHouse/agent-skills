@@ -4,18 +4,18 @@ description: Sets up and manages Postgres using the clickhousectl CLI — runs a
 license: Apache-2.0
 metadata:
   author: ClickHouse Inc
-  version: "0.3.0"
-  clickhousectl-version: "0.5.0"
+  version: "0.4.0"
+  clickhousectl-version: "0.6.0"
 ---
 
-Last updated 2026-10-30 for clickhousectl 0.5.0. (update the CLI with `clickhousectl update`, update skills with `clickhousectl skills`)
+Last updated 2026-11-19 for clickhousectl 0.6.0. (update the CLI with `clickhousectl update`, update skills with `clickhousectl skills`)
 
 # Postgres with clickhousectl
 
 `clickhousectl` manages Postgres in two environments:
 
 - **Local** — named, Docker-backed Postgres instances on the user's machine, for development.
-- **Cloud** — managed Postgres services in ClickHouse Cloud (beta), for production: HA, read replicas, point-in-time restore.
+- **Cloud** — managed Postgres services in ClickHouse Cloud, for production: HA, read replicas, point-in-time restore.
 
 This file routes to the right reference. The step-by-step workflows live in `ref/local.md`, `ref/cloud.md`, and `ref/migrate.md` — read the one that matches the user's situation before running commands.
 
@@ -48,6 +48,10 @@ curl -fsSL https://clickhouse.com/cli | sh
 This installs to `~/.local/bin/clickhousectl` (with a `chctl` alias). If the command is still not found, suggest `export PATH="$HOME/.local/bin:$PATH"` or a new terminal.
 
 All commands accept `--json` for machine-readable output, and switch to JSON automatically when run by a coding agent. SQL output from `local client` and `local postgres client` stays in psql or clickhouse-client's native format. Exit codes: 0 success, 1 error, 2 usage error, 3 cancelled, 4 auth required.
+
+To find a command or flag by keyword, run `clickhousectl search <words>`. To check state before acting, run `clickhousectl local status` (this project's local ClickHouse and Postgres instances) and `clickhousectl cloud auth status` (the active Cloud credentials).
+
+If the CLI lacked something you needed, or its help misled you, send a short note to the clickhousectl team with `clickhousectl feedback "<the gap>"`.
 
 ## Related
 

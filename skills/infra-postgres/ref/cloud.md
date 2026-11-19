@@ -1,4 +1,4 @@
-# ClickHouse Cloud Postgres (beta)
+# ClickHouse Cloud Postgres
 
 Managed Postgres services in ClickHouse Cloud, controlled with `clickhousectl cloud postgres`. Follow these steps in order; the day-2 operations table at the end covers ongoing management.
 
@@ -33,14 +33,15 @@ clickhousectl cloud auth whoami
 clickhousectl cloud postgres create \
   --name <service-name> \
   --region us-east-1 \
-  --size c6gd.xlarge \
+  --size r6gd.medium \
   --pg-version 18
 ```
 
 Options to surface when relevant:
-- `--provider aws|gcp` — cloud provider (default: `aws`; GCP is in private preview and uses GCP region and size names)
-- `--pg-version 18|17` — Postgres major version
+- `--provider aws|gcp` — cloud provider (default: `aws`; GCP is in private preview and uses GCP region and size names, e.g. `c4-standard-lssd-4`)
+- `--pg-version 19|18|17` — Postgres major version
 - `--ha-type none|async|sync` — high availability
+- `--standby-count <n>` — hot standbys: `none` takes 0, `async` 1, `sync` 1 or 2; defaults to the highest the HA type takes
 - `--ip-allow <IP_OR_CIDR:PORTS[=DESCRIPTION]>` — IPv4 access rule (repeatable); `PORTS` is `5432` (Postgres), `6432` (PgBouncer), or a range like `5432..6432`
 - `--block-public-access` — create with no access rules
 - `--tag key=value` — resource tags (repeatable)
@@ -48,14 +49,16 @@ Options to surface when relevant:
 
 **Omitting `--ip-allow` allows all addresses on 5432 and 6432.** For production, pass `--ip-allow` rules instead; once any rule is given, only the listed rules apply, so add one for each port the application uses.
 
-The size is validated server-side; if the user is unsure what sizes or regions are available, check the ClickHouse Cloud console or docs rather than guessing.
+The size is validated server-side, and a rejected size returns the list of valid ones; if the user is unsure what regions are available, check the ClickHouse Cloud console or docs rather than guessing.
+
+For production, also turn on deletion protection once the service exists: `cloud postgres update <postgres-id> --deletion-protection true` (only for organizations with deletion protection enabled). `delete` is then rejected until it is turned off.
 
 **The `create` output contains the password and connection string, and they are returned only once.** Save them to `.env` immediately (e.g. as `DATABASE_URL`) and make sure `.env` is gitignored. `get` never returns credentials; if they are lost, `reset-password` (Step 3) is the only way back.
 
 `create` returns before the service is usable. Poll until `state` is `running` (service IDs come from `postgres list`):
 
 ```bash
-clickhousectl cloud postgres list --json
+clickhousectl cloud postgres list --json      # --filter name=<service-name> to narrow it
 clickhousectl cloud postgres get <postgres-id> --json
 ```
 
@@ -84,7 +87,9 @@ If the password from `create` was lost, set a new one:
 clickhousectl cloud postgres reset-password <postgres-id> --generate
 ```
 
-`--generate` prints a random compliant password once; store it in `.env` immediately. (Or pass `--password <pw>`: minimum 12 characters with upper, lower, and digit.) If you embed the password in a connection URI, percent-encode it first.
+`--generate` prints a random compliant password once; store it in `.env` immediately. (Or pass `--password <pw>`: minimum 12 characters with upper, lower, and digit.) If you embed the password in a connection URI, percent-encode it first. Run it on the primary: read replicas reject it and pick up the primary's new password.
+
+For quick read-only checks without psql, `clickhousectl cloud postgres query <postgres-id> --query "SELECT ..."` runs SQL through the Cloud API. It works only with OAuth login (`cloud auth login` with no flags, done by the user in a browser) and fails while API key credentials are active, since they take precedence over OAuth. Use psql for writes and for agent workflows logged in with an API key.
 
 ## Step 4: Apply the schema
 
@@ -111,7 +116,8 @@ Exit 0 means the change was accepted, not that it is active. Read it back with `
 
 | Task | Command |
 |------|---------|
-| Resize / change HA | `cloud postgres update <id> --size <size> --ha-type <type>` |
+| Resize / change HA | `cloud postgres update <id> --size <size> --ha-type <type> --standby-count <n>` |
+| Deletion protection | `cloud postgres update <id> --deletion-protection true\|false` |
 | Rename (changes the hostname) | `cloud postgres update <id> --new-name <name>` |
 | Tags | `cloud postgres update <id> --add-tag key=value --remove-tag <key>` |
 | Access rules | `cloud postgres update <id> --remove-ip-allow <rule-id> --add-ip-allow <IP_OR_CIDR:PORTS>` (rule IDs from `get`) |
@@ -123,14 +129,17 @@ Exit 0 means the change was accepted, not that it is active. Read it back with `
 | Server logs | `cloud postgres logs <id> --from-date <RFC3339> --to-date <RFC3339>` |
 | Metrics | `cloud postgres metrics <id> --from-date <RFC3339> --to-date <RFC3339>` |
 | Slow query patterns | `cloud postgres slow-queries list <id> --from-date <RFC3339> --to-date <RFC3339>` |
+| Slow query detail | `cloud postgres slow-queries get <id> <query-id> --db-name <db> --db-user <user> --db-operation <op>` (values from `list`) |
+| AWS private endpoint | `cloud postgres private-endpoint create <id>`, then see `cloud postgres private-endpoint --help` |
 | Restart | `cloud postgres restart <id>` |
 | Delete | `cloud postgres delete <id>` |
 
-Most of these also accept `--name <service-name>` in place of the ID (`backup list` and `slow-queries` take only the ID).
+These also accept `--name <service-name>` in place of the ID (`read-replica create` and `restore` take `--source-name`, since `--name` names the new service).
 
+- `update --size`, `--ha-type` and `--standby-count` return when accepted and take minutes; poll `get <id> --json` until `size` changes.
 - `restore` creates a **new** service from the source's backups at the given RFC 3339 timestamp, which must be inside the backup retention window; it does not modify the source. It copies the source's current IPv4 access rules unless `--ip-allow` or `--block-public-access` is given.
-- `restore` and `read-replica create` return no password, and the source's password may not work on the new service. Wait for `running`, then use `reset-password` if no valid password is known.
+- `restore` and `read-replica create` return no password. A restored service starts with the source's password as it was when the restore was requested; a read replica uses the source's password and follows later resets on the source.
 - `promote`, `switchover`, and `restart` return when the request is accepted, not when it completes. After `promote`, poll `get <replica-id> --json` until `isPrimary` is `true`. To confirm a restart, compare `SELECT pg_postmaster_start_time()` before and after.
-- `delete`, `promote`, and `switchover` are disruptive, and `delete` is irreversible and runs with no confirmation prompt, from any state. Confirm with the user before running them, and never run `delete` unless the user explicitly asked to delete that specific service.
+- `delete`, `promote`, and `switchover` are disruptive, and `delete` is irreversible and runs with no confirmation prompt, from any state (it is rejected while deletion protection is on). Confirm with the user before running them, and never run `delete` unless the user explicitly asked to delete that specific service.
 
 For performance investigations on a managed Postgres service, use the `clickhouse-managed-postgres-rca` skill if it is available.
