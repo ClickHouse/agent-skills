@@ -23,7 +23,15 @@ clickhousectl cloud auth status
 clickhousectl cloud auth whoami
 ```
 
-`auth status` always exits 0, so read whether it reports the credentials as verified. `auth whoami` lists the user's organizations and exits 4 if the credentials are rejected. If the user has more than one organization, pass `--org-id <id>` to cloud commands.
+`auth status` always exits 0, so read whether it reports the credentials as verified. `auth whoami` lists the user's organizations and exits 4 if the credentials are rejected.
+
+If it lists more than one organization, ask the user which one this project belongs to, then pin it from the project directory:
+
+```bash
+clickhousectl cloud use --org-name <org-name>   # or --org-id <org-id>
+```
+
+Every later cloud command in this project then acts on that organization, with no `--org-id` on each one. The pin is saved in the project's git-ignored `.clickhouse/context.json`, so it belongs to this checkout. `clickhousectl cloud use` shows the pin, `cloud use --clear` removes it, and `--org-id` or `--org-name` on a command overrides it for that command. With a single organization no pin is needed. The command refuses to pin from the home directory, which is not a project.
 
 ## Step 2: Create a Postgres service
 
@@ -130,6 +138,7 @@ Exit 0 means the change was accepted, not that it is active. Read it back with `
 | Metrics | `cloud postgres metrics <id> --from-date <RFC3339> --to-date <RFC3339>` |
 | Slow query patterns | `cloud postgres slow-queries list <id> --from-date <RFC3339> --to-date <RFC3339>` |
 | Slow query detail | `cloud postgres slow-queries get <id> <query-id> --db-name <db> --db-user <user> --db-operation <op>` (values from `list`) |
+| Queries that waited on locks (beta) | `cloud postgres blocking-queries list <id> --from-date <RFC3339> --to-date <RFC3339>` |
 | AWS private endpoint | `cloud postgres private-endpoint create <id>`, then see `cloud postgres private-endpoint --help` |
 | Restart | `cloud postgres restart <id>` |
 | Delete | `cloud postgres delete <id>` |

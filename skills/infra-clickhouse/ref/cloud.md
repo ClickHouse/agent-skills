@@ -51,7 +51,17 @@ clickhousectl cloud auth status
 clickhousectl cloud auth whoami
 ```
 
-`auth status` shows the active credential source and whether it verified; it always exits 0, so read its output. `auth whoami` lists the user's organizations and exits 4 if the credentials are rejected. If the user has more than one organization, pass `--org-id <id>` to cloud commands.
+`auth status` shows the active credential source and whether it verified; it always exits 0, so read its output. `auth whoami` lists the user's organizations and exits 4 if the credentials are rejected.
+
+### Pin the project's organization
+
+If `auth whoami` lists more than one organization, ask the user which one this project belongs to, then pin it from the project directory:
+
+```bash
+clickhousectl cloud use --org-name <org-name>   # or --org-id <org-id>
+```
+
+Every later cloud command in this project then acts on that organization, with no `--org-id` on each one. The pin is saved in the project's git-ignored `.clickhouse/context.json`, so it belongs to this checkout and other projects keep their own. `clickhousectl cloud use` shows the pin, `cloud use --clear` removes it, and `--org-id` or `--org-name` on a command overrides it for that command. With a single organization no pin is needed. The command refuses to pin from the home directory, which is not a project.
 
 ## Step 3: Create a cloud service
 
